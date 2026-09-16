@@ -1,0 +1,463 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "installationName": {
+      "type": "string",
+      "defaultValue": "trulyyou-dashboard",
+      "minLength": 3,
+      "maxLength": 40,
+      "metadata": {
+        "description": "Unique installation name; use a new name for each dashboard"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "allowedValues": [
+        "westeurope",
+        "eastus"
+      ]
+    },
+    "companyName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "ownerEmail": {
+      "type": "string",
+      "minLength": 3
+    },
+    "dnsZoneResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of an existing public DNS zone in this subscription"
+      }
+    },
+    "dashboardHost": {
+      "type": "string",
+      "metadata": {
+        "description": "New unused hostname in the zone"
+      }
+    },
+    "vmPassword": {
+      "type": "securestring",
+      "defaultValue": "[concat('Ty!',newGuid(),'9a')]",
+      "metadata": {
+        "description": "Generated VM recovery password. SSH is not exposed; no password is needed to sign into TrulyYou."
+      }
+    }
+  },
+  "variables": {
+    "name": "[concat('trulyyou-', uniqueString(subscription().id, parameters('installationName')))]",
+    "account": "[concat('ty', uniqueString(subscription().id, parameters('installationName')))]",
+    "app": "[concat('app_dashboard_', uniqueString(subscription().id, parameters('installationName')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('name')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "trulyyou:application": "[variables('app')]"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "installation",
+      "resourceGroup": "[variables('name')]",
+      "dependsOn": [
+        "[variables('name')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "parameters": {
+          "installationName": {
+            "value": "[parameters('installationName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "companyName": {
+            "value": "[parameters('companyName')]"
+          },
+          "ownerEmail": {
+            "value": "[parameters('ownerEmail')]"
+          },
+          "dnsZoneResourceId": {
+            "value": "[parameters('dnsZoneResourceId')]"
+          },
+          "dashboardHost": {
+            "value": "[parameters('dashboardHost')]"
+          },
+          "vmPassword": {
+            "value": "[parameters('vmPassword')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "installationName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "companyName": {
+              "type": "string"
+            },
+            "ownerEmail": {
+              "type": "string"
+            },
+            "dnsZoneResourceId": {
+              "type": "string"
+            },
+            "dashboardHost": {
+              "type": "string"
+            },
+            "vmPassword": {
+              "type": "securestring"
+            }
+          },
+          "variables": {
+            "name": "[concat('trulyyou-', uniqueString(subscription().id, parameters('installationName')))]",
+            "account": "[concat('ty', uniqueString(subscription().id, parameters('installationName')))]",
+            "app": "[concat('app_dashboard_', uniqueString(subscription().id, parameters('installationName')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[variables('account')]",
+              "location": "[parameters('location')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "properties": {
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": false,
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[concat(variables('account'), '/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('account'))]"
+              ],
+              "properties": {
+                "isVersioningEnabled": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[concat(variables('account'), '/default/installation')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('account'))]"
+              ],
+              "properties": {
+                "publicAccess": "None"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, variables('name'), 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('account'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('account'))]"
+              ],
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions','ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "https",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRanges": [
+                        "80",
+                        "443"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.85.0.0/16"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "dashboard",
+                    "properties": {
+                      "addressPrefix": "10.85.0.0/24"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('name'))]",
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('name'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('name'))]"
+              ],
+              "properties": {
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('name'))]"
+                },
+                "ipConfigurations": [
+                  {
+                    "name": "dashboard",
+                    "properties": {
+                      "privateIPAllocationMethod": "Dynamic",
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('name'), 'dashboard')]"
+                      },
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('name'))]"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-03-01",
+              "name": "[variables('name')]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "trulyyou:application": "[variables('app')]"
+              },
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name'))]": {}
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('name'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers',variables('account'),'default','installation')]"
+              ],
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "Standard_D2s_v5"
+                },
+                "osProfile": {
+                  "computerName": "[variables('name')]",
+                  "adminUsername": "trulyyou",
+                  "adminPassword": "[parameters('vmPassword')]",
+                  "customData": "[base64(concat('#!/bin/bash\nset -euo pipefail\numask 077\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y docker.io python3-venv curl unzip\nsystemctl enable --now docker\nmkdir -p /opt/trulyyou\ncurl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-375cc1975b5ba0cd08882a0c5ac53b93f4a4f981e99663a338d146cef9920001.zip -o /opt/trulyyou/bootstrap.zip\necho ''375cc1975b5ba0cd08882a0c5ac53b93f4a4f981e99663a338d146cef9920001  /opt/trulyyou/bootstrap.zip'' | sha256sum -c -\nunzip -oq /opt/trulyyou/bootstrap.zip -d /opt/trulyyou\npython3 -m venv /opt/trulyyou-boot\n/opt/trulyyou-boot/bin/pip install boto3 google-cloud-storage azure-identity azure-storage-blob\nprintf ''%s'' ''',base64(string(createObject('provider','azure','target',subscription().subscriptionId,'tenantId',subscription().tenantId,'region',parameters('location'),'zone',parameters('dnsZoneResourceId'),'domain',parameters('dashboardHost'),'owner',parameters('ownerEmail'),'company',parameters('companyName'),'name',variables('name'),'bucket','installation','account',variables('account'),'clientId',reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name')), '2023-01-31').clientId,'image','ghcr.io/rory-truly/trulyyou-dashboard@sha256:d5038ccc3e08471d72c739c0edced2b296991d9b363707f8a37b04205b1a1bbc'))),''' | base64 -d > /opt/trulyyou/native.json\n\ncat > /etc/systemd/system/trulyyou.service <<''UNIT''\n[Unit]\nDescription=TrulyYou installation\nAfter=network-online.target docker.service\nWants=network-online.target\nRequires=docker.service\nStartLimitIntervalSec=0\n[Service]\nType=oneshot\nExecStart=/opt/trulyyou-boot/bin/python /opt/trulyyou/bootstrap.py\nRemainAfterExit=yes\nRestart=on-failure\nRestartSec=30\n[Install]\nWantedBy=multi-user.target\nUNIT\nsystemctl daemon-reload\nsystemctl enable --now trulyyou\n'))]",
+                  "linuxConfiguration": {
+                    "disablePasswordAuthentication": false
+                  }
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "Canonical",
+                    "offer": "ubuntu-24_04-lts",
+                    "sku": "server",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "diskSizeGB": 40,
+                    "managedDisk": {
+                      "storageAccountType": "Premium_LRS"
+                    }
+                  }
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('name'))]"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name')), '2023-01-31').principalId]"
+            },
+            "address": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',variables('name')), '2023-09-01').ipAddress]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(subscription().id, variables('name'), 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+      "dependsOn": [
+        "installation"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions','b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+        "principalId": "[reference('installation').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(subscription().id, variables('name'), '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9')]",
+      "dependsOn": [
+        "installation"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions','18d7d88d-d35e-4fb5-a5c3-7773c20a72d9')]",
+        "principalId": "[reference('installation').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "dashboardDns",
+      "resourceGroup": "[split(parameters('dnsZoneResourceId'),'/')[4]]",
+      "dependsOn": [
+        "installation"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "parameters": {
+          "zoneId": {
+            "value": "[parameters('dnsZoneResourceId')]"
+          },
+          "host": {
+            "value": "[parameters('dashboardHost')]"
+          },
+          "address": {
+            "value": "[reference('installation').outputs.address.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "zoneId": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "address": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/dnsZones/A",
+              "apiVersion": "2018-05-01",
+              "name": "[concat(last(split(parameters('zoneId'),'/')), '/', substring(parameters('host'),0,sub(length(parameters('host')),add(length(last(split(parameters('zoneId'),'/'))),1))))]",
+              "properties": {
+                "TTL": 60,
+                "ARecords": [
+                  {
+                    "ipv4Address": "[parameters('address')]"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "dashboardUrl": {
+      "type": "string",
+      "value": "[concat('https://',parameters('dashboardHost'))]"
+    },
+    "installationResourceGroup": {
+      "type": "string",
+      "value": "[variables('name')]"
+    }
+  }
+}

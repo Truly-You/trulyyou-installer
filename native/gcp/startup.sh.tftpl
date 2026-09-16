@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y docker.io python3-venv curl unzip
+systemctl enable --now docker
+mkdir -p /opt/trulyyou
+curl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-375cc1975b5ba0cd08882a0c5ac53b93f4a4f981e99663a338d146cef9920001.zip -o /opt/trulyyou/bootstrap.zip
+echo '375cc1975b5ba0cd08882a0c5ac53b93f4a4f981e99663a338d146cef9920001  /opt/trulyyou/bootstrap.zip' | sha256sum -c -
+unzip -oq /opt/trulyyou/bootstrap.zip -d /opt/trulyyou
+python3 -m venv /opt/trulyyou-boot
+/opt/trulyyou-boot/bin/pip install boto3 google-cloud-storage azure-identity azure-storage-blob
+printf '%s' '${config}' | base64 -d > /opt/trulyyou/native.json
+
+cat > /etc/systemd/system/trulyyou.service <<'UNIT'
+[Unit]
+Description=TrulyYou installation
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+StartLimitIntervalSec=0
+[Service]
+Type=oneshot
+ExecStart=/opt/trulyyou-boot/bin/python /opt/trulyyou/bootstrap.py
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=30
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now trulyyou
