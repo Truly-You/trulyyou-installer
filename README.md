@@ -8,7 +8,7 @@ Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, 
 
 In Cloudflare, choose your account and fill in `OWNER_EMAIL`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID`. Add `SETUP_TOKEN` and `PROVISIONING_TOKEN` as secret build variables; the installer saves them as Worker secrets automatically. The build requires a Cloudflare API token with Workers, D1, Containers/registry, and zone DNS permissions. Use `npm run deploy` as the deploy command. Your `workers.dev` dashboard address and internal storage keys are generated automatically.
 
-For a terminal installation, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, configure the same fields in `wrangler.jsonc`, and provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` through your environment. Provide `SETUP_TOKEN` and `PROVISIONING_TOKEN` through a private environment file, then run `npm run deploy`. Open the reported dashboard URL to start provisioning.
+For a terminal installation, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, configure the same fields in `wrangler.jsonc`, and provide `SETUP_TOKEN` and `PROVISIONING_TOKEN` through a private environment file, then run `npm run deploy`. Open the reported dashboard URL to start provisioning.
 
 ## Installation setup
 

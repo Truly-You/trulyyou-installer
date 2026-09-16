@@ -36,7 +36,7 @@
     }
   ],
   "observability": {
-    "enabled": false
+    "enabled": true
   },
   "secrets": {
     "required": [

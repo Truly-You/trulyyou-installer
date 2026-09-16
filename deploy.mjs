@@ -5,11 +5,11 @@ import {createHash,randomBytes} from 'node:crypto';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
-const token=process.env.CLOUDFLARE_API_TOKEN;
+const token=process.env.PROVISIONING_TOKEN;
 if(!process.env.PROVISIONING_TOKEN||!process.env.SETUP_TOKEN)throw Error('Set SETUP_TOKEN and PROVISIONING_TOKEN as private build variables before deploying.');
-if(!/^[a-f0-9]{32}$/.test(account??'')||!token)throw Error('Deploy with CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in the build environment.');
+if(!/^[a-f0-9]{32}$/.test(account??''))throw Error('Set CLOUDFLARE_ACCOUNT_ID before deploying.');
 const temporary=await mkdtemp(path.join(os.tmpdir(),'trulyyou-deploy-'));
-const env={...process.env,CLOUDFLARE_ACCOUNT_ID:account,DOCKER_CONFIG:temporary,WRANGLER_SEND_METRICS:'false'};
+const env={...process.env,CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token,DOCKER_CONFIG:temporary,WRANGLER_SEND_METRICS:'false'};
 const run=(command,args,input,capture=false)=>new Promise((resolve,reject)=>{
  const child=spawn(command,args,{env,stdio:['pipe','pipe','pipe']});let output='',error='';
  child.stdout.on('data',bytes=>{output+=bytes;if(!capture)process.stdout.write(bytes);});child.stderr.on('data',bytes=>{error+=bytes;if(!capture)process.stderr.write(bytes);});
@@ -47,8 +47,7 @@ try{
  config.name=name;config.account_id=account;config.containers[0].image=images.dashboard;
  config.vars={...config.vars,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:config.vars.DASHBOARD_ORIGIN||`https://${name}.${subdomain.subdomain}.workers.dev`};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
- await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--containers-rollout','immediate']);
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:process.env.SETUP_TOKEN,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
- await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'secret','bulk',secretsFile,'--config','.generated/wrangler.json']);
+ await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);
  console.log('Dashboard: '+config.vars.DASHBOARD_ORIGIN);
 }finally{await rm(temporary,{recursive:true,force:true});}
