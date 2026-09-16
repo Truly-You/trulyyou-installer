@@ -5,9 +5,13 @@ import {createHash,randomBytes} from 'node:crypto';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
+const owner=process.env.OWNER_EMAIL||config.vars.OWNER_EMAIL;
+const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
 const token=process.env.PROVISIONING_TOKEN;
 if(!process.env.PROVISIONING_TOKEN||!process.env.SETUP_TOKEN)throw Error('Set SETUP_TOKEN and PROVISIONING_TOKEN as private build variables before deploying.');
 if(!/^[a-f0-9]{32}$/.test(account??''))throw Error('Set CLOUDFLARE_ACCOUNT_ID before deploying.');
+if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner??''))throw Error('Set OWNER_EMAIL to the designated owner before deploying.');
+if(!/^[a-f0-9]{32}$/.test(zone??''))throw Error('Set CLOUDFLARE_ZONE_ID to an active zone in your account before deploying.');
 const temporary=await mkdtemp(path.join(os.tmpdir(),'trulyyou-deploy-'));
 const env={...process.env,CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:token,DOCKER_CONFIG:temporary,WRANGLER_SEND_METRICS:'false'};
 const run=(command,args,input,capture=false)=>new Promise((resolve,reject)=>{
@@ -27,7 +31,7 @@ try{
  const credentials=await api('/containers/registries/registry.cloudflare.com/credentials',{expiration_minutes:60,permissions:['push','pull']});
  await run(crane,['auth','login','registry.cloudflare.com','--username',credentials.username,'--password-stdin'],credentials.password,true);
  const release=JSON.parse(await readFile('release.json','utf8')),images={};
- const downloadToken=process.env.SETUP_TOKEN||process.env.DOWNLOAD_TOKEN;
+ const downloadToken=process.env.DOWNLOAD_TOKEN||process.env.SETUP_TOKEN;
  if(!downloadToken)throw Error('Set your setup token as a build secret to retrieve the private release images.');
  await mkdir('.generated',{recursive:true});
  let claim;try{claim=JSON.parse(await readFile('.generated/download-claim.json','utf8'));}catch{claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
@@ -45,7 +49,7 @@ try{
  const subdomain=await api('/workers/subdomain');
  const name=process.env.WRANGLER_CI_OVERRIDE_NAME||config.name;
  config.name=name;config.account_id=account;config.containers[0].image=images.dashboard;
- config.vars={...config.vars,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:config.vars.DASHBOARD_ORIGIN||`https://${name}.${subdomain.subdomain}.workers.dev`};
+ config.vars={...config.vars,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:config.vars.DASHBOARD_ORIGIN||`https://${name}.${subdomain.subdomain}.workers.dev`};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:process.env.SETUP_TOKEN,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
  await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);
