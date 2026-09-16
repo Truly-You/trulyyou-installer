@@ -2,7 +2,15 @@
 
 The Cloudflare installation runs the dashboard, secure gateway and application backend in your own account. Dashboard state lives in Cloudflare Durable Object storage; application records live in D1. No MongoDB service or persistent container disk is required.
 
-[Deploy to Cloudflare](https://deploy.workers.cloudflare.com/?url=https://github.com/rory-truly/trulyyou-cloudflare)
+## Get a token and deploy
+
+Open the [self-host setup page](https://docs.truly.you/?guide=self-host). Enter your company and owner email, then enter the six-digit code delivered to that address. Verification issues a setup token automatically; no operator approval is needed. Copy it into `SETUP_TOKEN` in your provider’s deployment form and use the same address for `OWNER_EMAIL`.
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/rory-truly/trulyyou-cloudflare)
+
+Cloudflare is currently the only complete dashboard self-host installer. AWS, Azure and Google Cloud support application backends, but their full dashboard installers are not yet available.
+
+## Cloudflare configuration
 
 Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, plus an active DNS zone for the secure gateway. The deploy button copies the small installer into your GitHub account and runs it in Cloudflare Builds. The images remain private. Your setup token authorizes one download session and exchanges for short-lived, read-only registry credentials. The installer copies the pinned images into your own Cloudflare registry; no Docker daemon or external host is required.
 
@@ -12,15 +20,15 @@ For a terminal installation, download the [installation bundle](/assets/self-hos
 
 ## Installation setup
 
-TrulyYou issues a setup token tied to your company and designated owner email. The token expires after 24 hours and activates one installation. Store it in Cloudflare's deployment secrets as `SETUP_TOKEN`, never in a repository or container image.
+Email verification issues a setup token tied to your company and designated owner email. The token expires after 24 hours and activates one installation. Store it in Cloudflare's deployment secrets as `SETUP_TOKEN`, never in a repository or container image.
 
 Provide the owner email, control-service origin, your Cloudflare account and active DNS zone, and a provisioning token for your account. Provisioning creates the Dashboard application, login method and screens, production and preview Workers, D1 datastores, and packet gateway. It verifies gateway connectivity before enabling sign-in.
 
-Your designated owner receives the global Owner role. Being the first visitor or deleting all users does not grant ownership or reopen setup. First sign-in still requires email verification and TrulyYou approval.
+Your designated owner receives the global Owner role. Being the first visitor or deleting all users does not grant ownership or reopen setup. First sign-in still requires email verification and approval on their TrulyYou device.
 
 ## Dashboard emails
 
-Dashboard sign-in emails are delivered through TrulyYou's restricted email relay, for example `NairaBank <signin@nairabank.truly.you>`. TrulyYou configures and verifies the sending subdomain. You do not need a Resend account or API key.
+Dashboard sign-in emails are delivered through TrulyYou's restricted email relay, for example `NairaBank <signin@nairabank-1234abcd.truly.you>`. TrulyYou configures and verifies the sending subdomain. You do not need a Resend account or API key.
 
 During provisioning, the setup token is exchanged for a restricted installation credential. This credential is saved in encrypted installation state and in the Dashboard backend's production secrets. It permits predefined dashboard sign-in emails, with sending limits; it cannot select arbitrary senders or email content.
 
