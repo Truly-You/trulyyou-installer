@@ -1,11 +1,12 @@
 /** Runs inside the customer's build account. No credentials go to TrulyYou. */
 import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {createHash,randomBytes} from 'node:crypto';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
 const token=process.env.CLOUDFLARE_API_TOKEN;
+if(!process.env.PROVISIONING_TOKEN||!process.env.SETUP_TOKEN)throw Error('Set SETUP_TOKEN and PROVISIONING_TOKEN as private build variables before deploying.');
 if(!/^[a-f0-9]{32}$/.test(account??'')||!token)throw Error('Deploy with CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in the build environment.');
 const temporary=await mkdtemp(path.join(os.tmpdir(),'trulyyou-deploy-'));
 const env={...process.env,CLOUDFLARE_ACCOUNT_ID:account,DOCKER_CONFIG:temporary,WRANGLER_SEND_METRICS:'false'};
@@ -26,8 +27,17 @@ try{
  const credentials=await api('/containers/registries/registry.cloudflare.com/credentials',{expiration_minutes:60,permissions:['push','pull']});
  await run(crane,['auth','login','registry.cloudflare.com','--username',credentials.username,'--password-stdin'],credentials.password,true);
  const release=JSON.parse(await readFile('release.json','utf8')),images={};
+ const downloadToken=process.env.SETUP_TOKEN||process.env.DOWNLOAD_TOKEN;
+ if(!downloadToken)throw Error('Set your setup token as a build secret to retrieve the private release images.');
+ await mkdir('.generated',{recursive:true});
+ let claim;try{claim=JSON.parse(await readFile('.generated/download-claim.json','utf8'));}catch{claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
+ if(claim.tokenHash!==createHash('sha256').update(downloadToken).digest('hex')){claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
  for(const name of ['dashboard','gateway']){
   const destination=`registry.cloudflare.com/${account}/trulyyou-${name}:${release.version}`;
+  const grantResponse=await fetch(config.vars.CONTROL_ORIGIN+'/v1/installations/download',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:downloadToken,claim:claim.nonce,component:name}),redirect:'error'});
+  if(!grantResponse.ok)throw Error('Private release authorization failed. Check your setup/download grant.');
+  const grant=await grantResponse.json();if(grant.image!==release.images[name]||grant.registry!=='ghcr.io'||typeof grant.registryToken!=='string')throw Error('Release authorization does not match the pinned image.');
+  const auth=JSON.parse(await readFile(path.join(temporary,'config.json'),'utf8'));auth.auths['ghcr.io']={registrytoken:grant.registryToken};await writeFile(path.join(temporary,'config.json'),JSON.stringify(auth),{mode:0o600});
   console.log(`Copying ${name} image into your Cloudflare account.`);
   await run(crane,['copy','--platform','linux/amd64',release.images[name],destination]);
   const digest=await run(crane,['digest',destination],undefined,true);images[name]=destination.split(':')[0]+'@'+digest;
@@ -38,5 +48,7 @@ try{
  config.vars={...config.vars,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:config.vars.DASHBOARD_ORIGIN||`https://${name}.${subdomain.subdomain}.workers.dev`};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--containers-rollout','immediate']);
+ const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:process.env.SETUP_TOKEN,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
+ await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'secret','bulk',secretsFile,'--config','.generated/wrangler.json']);
  console.log('Dashboard: '+config.vars.DASHBOARD_ORIGIN);
 }finally{await rm(temporary,{recursive:true,force:true});}

@@ -4,11 +4,11 @@ The Cloudflare installation runs the dashboard, secure gateway and application b
 
 [Deploy to Cloudflare](https://deploy.workers.cloudflare.com/?url=https://github.com/rory-truly/trulyyou-cloudflare)
 
-Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, plus an active DNS zone for the secure gateway. The deploy button copies the small installer into your GitHub account and runs it in Cloudflare Builds. The installer copies pinned dashboard and gateway images into your own Cloudflare registry; no Docker daemon or external host is required.
+Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, plus an active DNS zone for the secure gateway. The deploy button copies the small installer into your GitHub account and runs it in Cloudflare Builds. The images remain private. Your setup token authorizes one download session and exchanges for short-lived, read-only registry credentials. The installer copies the pinned images into your own Cloudflare registry; no Docker daemon or external host is required.
 
-In Cloudflare, choose your account and fill in `OWNER_EMAIL`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID`. Add the requested `SETUP_TOKEN` and `PROVISIONING_TOKEN` secrets. The build requires a Cloudflare API token with Workers, D1, Containers/registry, and zone DNS permissions. Use `npm run deploy` as the deploy command. Your `workers.dev` dashboard address and internal storage keys are generated automatically.
+In Cloudflare, choose your account and fill in `OWNER_EMAIL`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID`. Add `SETUP_TOKEN` and `PROVISIONING_TOKEN` as secret build variables; the installer saves them as Worker secrets automatically. The build requires a Cloudflare API token with Workers, D1, Containers/registry, and zone DNS permissions. Use `npm run deploy` as the deploy command. Your `workers.dev` dashboard address and internal storage keys are generated automatically.
 
-For a terminal installation, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, configure the same fields in `wrangler.jsonc`, and provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` through your environment. Run `npm run deploy`, then use `wrangler secret bulk` with a private JSON file containing the two deployment secrets. Open the reported dashboard URL to start provisioning.
+For a terminal installation, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, configure the same fields in `wrangler.jsonc`, and provide `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` through your environment. Provide `SETUP_TOKEN` and `PROVISIONING_TOKEN` through a private environment file, then run `npm run deploy`. Open the reported dashboard URL to start provisioning.
 
 ## Installation setup
 
