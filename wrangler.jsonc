@@ -1,0 +1,53 @@
+{
+  "name": "trulyyou-dashboard",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DASHBOARD",
+        "class_name": "Dashboard"
+      },
+      {
+        "name": "STATE",
+        "class_name": "DashboardState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "Dashboard",
+        "DashboardState"
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "Dashboard",
+      "image": "ghcr.io/rory-truly/trulyyou-dashboard@sha256:ed2f23b69b9a1702d48e3ae4b70f3574ebc416282a7b5d44e2345f263c3daf7f",
+      "max_instances": 1,
+      "instance_type": "standard-2"
+    }
+  ],
+  "observability": {
+    "enabled": false
+  },
+  "secrets": {
+    "required": [
+      "SETUP_TOKEN",
+      "PROVISIONING_TOKEN"
+    ]
+  },
+  "vars": {
+    "CONTROL_ORIGIN": "https://trulyyou-control.slick-run.workers.dev",
+    "OWNER_EMAIL": "",
+    "CLOUDFLARE_ACCOUNT_ID": "",
+    "CLOUDFLARE_ZONE_ID": ""
+  }
+}

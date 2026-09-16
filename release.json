@@ -1,0 +1,7 @@
+{
+ "version":"sha-42fa7880c7273068bd51fe04834433ae8a78fe13",
+ "images":{
+  "dashboard":"ghcr.io/rory-truly/trulyyou-dashboard@sha256:ed2f23b69b9a1702d48e3ae4b70f3574ebc416282a7b5d44e2345f263c3daf7f",
+  "gateway":"ghcr.io/rory-truly/trulyyou-gateway@sha256:82747ad5453d0ffa4bf5cd763fcf8312786c084561173262dbb6fe42854936ab"
+ }
+}
