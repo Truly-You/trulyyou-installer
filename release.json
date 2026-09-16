@@ -1,7 +1,7 @@
 {
-  "version": "sha-a38b92f2ad745109ec8c1f70694036d812966411",
+  "version": "sha-ad42fed81c37ee45d450dfc301d1d8f05725dae0",
   "images": {
-    "dashboard": "ghcr.io/rory-truly/trulyyou-dashboard@sha256:506bfd79dc23591df29990d9d60cce658d5c91395032d03d1e0aa636e2148336",
-    "gateway": "ghcr.io/rory-truly/trulyyou-gateway@sha256:a341de2e0f8fdf09e6a2dadb0a8ec3e9d77ecb6e01553f9eb6009fbbdace016e"
+    "dashboard": "ghcr.io/rory-truly/trulyyou-dashboard@sha256:05e607bc1f7550571114fb31c950fbca2d56cbc1ce9c857bd11bdd6e87f10cc4",
+    "gateway": "ghcr.io/rory-truly/trulyyou-gateway@sha256:1c9238258048d1b2c6e577c39276da5d61e2cec6cca696db5d92e64a20644f46"
   }
 }
