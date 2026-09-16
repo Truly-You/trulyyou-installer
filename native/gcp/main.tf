@@ -74,6 +74,17 @@ resource "google_project_iam_member" "dashboard" {
   role     = each.key
   member   = "serviceAccount:${google_service_account.dashboard.email}"
 }
+# DNS Admin excludes zone IAM changes needed to authorize the gateway identity.
+resource "google_project_iam_custom_role" "provisioning" {
+  role_id     = "${replace(local.name, "-", "_")}_provisioning"
+  title       = "TrulyYou deployment support"
+  permissions = ["dns.managedZones.setIamPolicy", "compute.regions.list"]
+}
+resource "google_project_iam_member" "provisioning" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.provisioning.name
+  member  = "serviceAccount:${google_service_account.dashboard.email}"
+}
 resource "google_compute_network" "dashboard" {
   name                    = local.name
   auto_create_subnetworks = false
@@ -133,7 +144,7 @@ resource "google_compute_instance" "dashboard" {
     provider = "gcp", target = var.project_id, region = var.region,
     zone     = var.dns_zone, domain = var.dashboard_host, company = var.company_name,
     owner    = var.owner_email, name = local.name, bucket = google_storage_bucket.state.name,
-    image    = "ghcr.io/rory-truly/trulyyou-dashboard@sha256:db7a2395d8b1e1e7d7701d000e99d371c9d3e400c931bbf89c5b3fde9685a12b"
+    image    = "ghcr.io/rory-truly/trulyyou-dashboard@sha256:30ad9dc8e28bf4acff7f23816c7fbb20c10317d79427bb900e85a35bdadf4299"
   })) })
   lifecycle {
     precondition {
@@ -141,7 +152,7 @@ resource "google_compute_instance" "dashboard" {
       error_message = "Choose a new hostname inside the selected public DNS zone."
     }
   }
-  depends_on = [google_project_iam_member.dashboard, google_compute_firewall.https]
+  depends_on = [google_project_iam_member.dashboard, google_project_iam_member.provisioning, google_compute_firewall.https]
 }
 resource "google_dns_record_set" "dashboard" {
   name         = "${var.dashboard_host}."
