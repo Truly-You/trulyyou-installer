@@ -30,7 +30,7 @@
   "containers": [
     {
       "class_name": "Dashboard",
-      "image": "ghcr.io/rory-truly/trulyyou-dashboard@sha256:30ad9dc8e28bf4acff7f23816c7fbb20c10317d79427bb900e85a35bdadf4299",
+      "image": "ghcr.io/rory-truly/trulyyou-dashboard@sha256:5de2fdb99cdda7df0a615e13a7517f3ad27776dda725f3acf9418dcf1a91abbf",
       "max_instances": 1,
       "instance_type": "standard-2"
     }
