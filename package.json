@@ -11,6 +11,9 @@
   },
   "cloudflare": {
     "bindings": {
+      "DASHBOARD_HOSTNAME": {
+        "description": "Optional dashboard hostname in your Cloudflare account, such as auth-dashboard.example.com. Leave empty for workers.dev."
+      },
       "OWNER_EMAIL": {
         "description": "Your dashboard owner. Verify this email during first sign-in."
       },

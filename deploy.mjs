@@ -3,12 +3,15 @@ import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {createHash,randomBytes} from 'node:crypto';
 import {registerInstallation} from './register.mjs';
+import {dashboardAddress} from './address.mjs';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
 const owner=process.env.OWNER_EMAIL||config.vars.OWNER_EMAIL;
 const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
 const token=process.env.PROVISIONING_TOKEN;
+const hostname=process.env.DASHBOARD_HOSTNAME||config.vars.DASHBOARD_HOSTNAME;
+dashboardAddress(hostname,config.name,'validation');
 if(!process.env.PROVISIONING_TOKEN)throw Error('Set PROVISIONING_TOKEN as a private build variable before deploying.');
 if(!/^[a-f0-9]{32}$/.test(account??''))throw Error('Set CLOUDFLARE_ACCOUNT_ID before deploying.');
 if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner??''))throw Error('Set OWNER_EMAIL to the designated owner before deploying.');
@@ -50,8 +53,10 @@ try{
  }
  const subdomain=await api('/workers/subdomain');
  const name=process.env.WRANGLER_CI_OVERRIDE_NAME||config.name;
+ const address=dashboardAddress(hostname,name,subdomain.subdomain);
  config.name=name;config.account_id=account;config.containers[0].image=images.dashboard;
- config.vars={...config.vars,DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:config.vars.DASHBOARD_ORIGIN||`https://${name}.${subdomain.subdomain}.workers.dev`};
+ if(address.routes)config.routes=address.routes;
+ config.vars={...config.vars,COMPANY_NAME:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:setupToken,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
  await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);

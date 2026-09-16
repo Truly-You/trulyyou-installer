@@ -46,6 +46,7 @@
   "vars": {
     "CONTROL_ORIGIN": "https://trulyyou-control.slick-run.workers.dev",
     "OWNER_EMAIL": "",
+    "DASHBOARD_HOSTNAME": "",
     "CLOUDFLARE_ACCOUNT_ID": "",
     "CLOUDFLARE_ZONE_ID": "",
     "ANDROID_CERT_FINGERPRINT": "90:79:31:9D:D2:B3:8F:07:00:47:9F:C4:44:A5:F0:DE:E3:5B:71:4A:AF:06:B4:51:22:BC:F1:35:76:69:6D:B8",
