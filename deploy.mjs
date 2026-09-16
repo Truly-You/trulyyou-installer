@@ -9,10 +9,12 @@ const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
 const owner=process.env.OWNER_EMAIL||config.vars.OWNER_EMAIL;
 const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
-const token=process.env.PROVISIONING_TOKEN;
+// Deploy-button secrets are already attached to the Worker, not exposed to Builds.
+// Use the build credential only for deployment; never persist it as the runtime token.
+const token=process.env.PROVISIONING_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
 const hostname=process.env.DASHBOARD_HOSTNAME||config.vars.DASHBOARD_HOSTNAME;
 dashboardAddress(hostname,config.name,'validation');
-if(!process.env.PROVISIONING_TOKEN)throw Error('Set PROVISIONING_TOKEN as a private build variable before deploying.');
+if(!token)throw Error('Cloudflare build credentials are unavailable. For a local deployment, set PROVISIONING_TOKEN.');
 if(!/^[a-f0-9]{32}$/.test(account??''))throw Error('Set CLOUDFLARE_ACCOUNT_ID before deploying.');
 if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner??''))throw Error('Set OWNER_EMAIL to the designated owner before deploying.');
 if(!/^[a-f0-9]{32}$/.test(zone??''))throw Error('Set CLOUDFLARE_ZONE_ID to an active zone in your account before deploying.');
@@ -24,6 +26,12 @@ const run=(command,args,input,capture=false)=>new Promise((resolve,reject)=>{
  child.on('error',reject);child.on('exit',code=>code===0?resolve(output.trim()):reject(Error('Installation command failed: '+path.basename(command))));child.stdin.end(input);
 });
 try{
+ if(!process.env.PROVISIONING_TOKEN){
+  const name=process.env.WRANGLER_CI_OVERRIDE_NAME||config.name;
+  const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/workers/scripts/${encodeURIComponent(name)}/secrets`,{headers:{authorization:`Bearer ${token}`}});
+  const saved=await response.json();
+  if(!response.ok||!saved.success||!saved.result?.some(secret=>secret.name==='PROVISIONING_TOKEN'))throw Error('Enter PROVISIONING_TOKEN in the Cloudflare deployment form before deploying.');
+ }
  await mkdir('.generated',{recursive:true});
  const setupToken=process.env.SETUP_TOKEN||await registerInstallation({file:'.generated/registration.json',provider:'cloudflare',ownerEmail:owner,company:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',controlOrigin:config.vars.CONTROL_ORIGIN});
  const platform=os.platform()==='darwin'&&os.arch()==='arm64'?'Darwin_arm64':os.platform()==='linux'&&os.arch()==='x64'?'Linux_x86_64':null;
