@@ -12,16 +12,16 @@
   "cloudflare": {
     "bindings": {
       "OWNER_EMAIL": {
-        "description": "The designated dashboard owner, matching your TrulyYou setup token."
+        "description": "Your dashboard owner. Verify this email during first sign-in."
       },
       "CLOUDFLARE_ZONE_ID": {
         "description": "An active DNS zone in your account for the secure packet gateway."
       },
-      "SETUP_TOKEN": {
-        "description": "[Get your setup token](https://docs.truly.you/?guide=self-host#get-setup-token) by verifying your owner email. Valid for one installation, expires after 24 hours."
-      },
       "PROVISIONING_TOKEN": {
         "description": "Your Cloudflare token with Workers, D1, Containers/registry and zone DNS permissions. Stored only in your installation."
+      },
+      "COMPANY_NAME": {
+        "description": "Your company name, used for dashboard emails."
       }
     }
   }
