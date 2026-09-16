@@ -6,8 +6,8 @@ apt-get update
 apt-get install -y docker.io python3-venv curl unzip
 systemctl enable --now docker
 mkdir -p /opt/trulyyou
-curl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-1592ee43257d9d7813373a51da43b4239bd745d8d1db71ba89e7c7de70d0dc64.zip -o /opt/trulyyou/bootstrap.zip
-echo '1592ee43257d9d7813373a51da43b4239bd745d8d1db71ba89e7c7de70d0dc64  /opt/trulyyou/bootstrap.zip' | sha256sum -c -
+curl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-b04da13bc94624065c5c208c7c71dd6df7235f6d269783849491c6a313a000ef.zip -o /opt/trulyyou/bootstrap.zip
+echo 'b04da13bc94624065c5c208c7c71dd6df7235f6d269783849491c6a313a000ef  /opt/trulyyou/bootstrap.zip' | sha256sum -c -
 unzip -oq /opt/trulyyou/bootstrap.zip -d /opt/trulyyou
 python3 -m venv /opt/trulyyou-boot
 /opt/trulyyou-boot/bin/pip install boto3 google-cloud-storage azure-identity azure-storage-blob
