@@ -133,7 +133,7 @@ resource "google_compute_instance" "dashboard" {
     provider = "gcp", target = var.project_id, region = var.region,
     zone     = var.dns_zone, domain = var.dashboard_host, company = var.company_name,
     owner    = var.owner_email, name = local.name, bucket = google_storage_bucket.state.name,
-    image    = "ghcr.io/rory-truly/trulyyou-dashboard@sha256:d5038ccc3e08471d72c739c0edced2b296991d9b363707f8a37b04205b1a1bbc"
+    image    = "ghcr.io/rory-truly/trulyyou-dashboard@sha256:db7a2395d8b1e1e7d7701d000e99d371c9d3e400c931bbf89c5b3fde9685a12b"
   })) })
   lifecycle {
     precondition {
