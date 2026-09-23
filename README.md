@@ -96,7 +96,25 @@ Choose **Review + create**, then **Create**. The deployment takes a few minutes.
 
 ### 4. Wait for first boot
 
-The VM then installs its runtime, registers the installation and downloads the dashboard image. The dashboard URL starts responding about five minutes after the deployment completes; until then the browser reports that it cannot connect. It first shows **Setting up your dashboard** while it provisions its login backend, datastore and secure gateway in your subscription, and shows sign-in when that finishes.
+The VM then installs its runtime, registers the installation and downloads the dashboard image. The dashboard URL starts responding about five minutes after the deployment completes; until then the browser reports that it cannot connect. It first shows **Setting up your dashboard** while it provisions its login backend, datastore and secure gateway in your subscription, and shows sign-in when that finishes. On a new subscription this takes about 30 minutes; most of it is Azure creating the gateway's first Container Apps environment. The page refreshes itself.
+
+If the page shows **Setup needs attention**, read the dashboard's log on the VM. Replace the group and VM names with the installation resource group from the deployment outputs; the VM has the same name:
+
+```sh
+az vm run-command invoke --resource-group trulyyou-abc123 --name trulyyou-abc123 \
+  --command-id RunShellScript --scripts "docker logs --tail 40 trulyyou-dashboard"
+```
+
+### Remove or retry an installation
+
+Deleting the installation resource group does not remove everything. Also delete the separate resource group the dashboard created for its sign-in app (a second `trulyyou-` group) and the two subscription-level role assignments the template granted. Deleting the groups deletes the identity but leaves those assignments in place:
+
+```sh
+az role assignment list --scope /subscriptions/<subscription-id> --query "[?principalName==''].{id:id,role:roleDefinitionName}" --output table
+az role assignment delete --ids <id> <id>
+```
+
+A retry with the same **Installation Name** fails while those assignments remain. To start again without removing them, use a new installation name. Keep your DNS zone; the next deployment replaces the dashboard's DNS record.
 
 ## Installation setup
 
