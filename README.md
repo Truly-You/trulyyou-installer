@@ -38,6 +38,18 @@ Keep `npm run deploy` as the deploy command. The installer copies the images, de
 
 For a terminal installation on Apple Silicon or Linux x64, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, and fill in the same fields under `vars` in `wrangler.jsonc`. Then pass the token in the environment, for example `PROVISIONING_TOKEN=<token> npm run deploy`. The installer does not read `.dev.vars` or `.env` files. Keep the generated `.generated/` directory: rerunning from it resumes the same installation.
 
+### Remove a Cloudflare installation
+
+Delete the Workers and containers before the databases. Force-deleting a Worker also deletes its Durable Object data and its custom domains:
+
+1. **Workers & Pages:** delete the dashboard Worker (`trulyyou-dashboard` unless you renamed it) and, for every app the dashboard created, `trulyyou-<id>`, `trulyyou-<id>-preview`, `trulyyou-<id>-gateway` and, if present, `trulyyou-<id>-links`. That includes the dashboard's own sign-in app.
+2. **Containers:** delete the dashboard container and each `trulyyou-<id>-gateway-packetgateway` container if they remain.
+3. **D1:** delete each app's `trulyyou-<id>-production-data` and `trulyyou-<id>-preview-data` databases.
+4. **DNS:** in the gateway zone, delete the remaining `route-<id>`, `signin` and custom-domain records.
+5. Delete the installer repository the deploy button copied into your GitHub account, and its Cloudflare Builds connection, then revoke the `PROVISIONING_TOKEN`.
+
+Container images copied into your Cloudflare registry remain until you delete them with `wrangler containers images delete`.
+
 ## AWS, Azure and Google Cloud
 
 Each deploy button opens the provider's native deployment portal. AWS uses a CloudFormation quick-create template ([step-by-step below](#aws)); Azure uses a subscription ARM template ([step-by-step below](#azure)); Google Cloud uses a Terraform template in Infrastructure Manager ([step-by-step below](#google-cloud)).
@@ -45,6 +57,8 @@ Each deploy button opens the provider's native deployment portal. AWS uses a Clo
 Use a dedicated account, subscription or project with billing enabled and an existing public DNS zone. Enter a new, unused dashboard hostname in that zone, your company and the designated owner email. Templates create HTTPS ingress, a dedicated dashboard VM, private versioned object storage and a deployment identity. The VM generates and checkpoints its installation credentials in that private storage, then downloads the pinned private dashboard image. The dashboard provisions the login backend and its datastore and gateway. Open the dashboard URL in the deployment outputs to follow setup; a completed infrastructure deployment alone does not mean login provisioning has finished.
 
 Supported regions are AWS `eu-west-1` and `us-east-1`, Azure `westeurope`, `eastus` and `westus`, and Google Cloud `europe-west1` and `us-central1`. The step-by-step sections below were written from those deployments, including the fixes they required.
+
+When you remove an installation for good and delete the DNS zone you created for it, also delete the `NS` records that delegate that subdomain at your parent DNS provider. A delegation to a deleted zone lets anyone who creates a zone of the same name at that provider serve content on your subdomain.
 
 The deployment identity remains inside your cloud. Google Cloud grants provisioning and IAM roles within your selected project. Azure grants Contributor and User Access Administrator within your selected subscription, plus access to its installation storage. AWS uses a deployment policy restricted to TrulyYou resource names and permission boundaries for runtime roles. The installer displays its scope before you create resources.
 
@@ -116,7 +130,7 @@ Restarting the VM recreates the dashboard container and discards its previous lo
 
 ### Remove or retry an installation
 
-Deleting the stack alone does not remove everything, and it fails while the dashboard's runtime roles still exist. In a dedicated account, remove the resources the dashboard created first, in this order: the ECS gateway service, its load balancer and cluster, the Lambda functions, the DynamoDB tables (turn off their deletion protection first), and the `trulyyou-*-runtime` IAM roles. Then delete the stack. Afterwards, empty and delete the `trulyyou-` S3 buckets, including all object versions (the stack keeps its state bucket), and disable and then delete the CloudFront distribution. Remove the gateway's certificate, target group, container registry and VPC as well, or close the account. A retry can use a new stack in the same account; names derive from each stack's ID.
+Deleting the stack alone does not remove everything, and it fails while the dashboard's runtime roles still exist. In a dedicated account, remove the resources the dashboard created first, in this order: the ECS gateway service, its load balancer and cluster, the Lambda functions, the DynamoDB tables (turn off their deletion protection first), and the `trulyyou-*-runtime` IAM roles. Then delete the stack. Afterwards, empty and delete the `trulyyou-` S3 buckets, including all object versions (the stack keeps its state bucket), and disable and then delete the CloudFront distribution. Remove the gateway's certificate, target group, container registry and VPC as well. If an app has a custom domain, also delete its CloudFront distribution and its certificate in `us-east-1`. Delete the Route 53 zone once only its `NS` and `SOA` records remain, or close the account. A retry can use a new stack in the same account; names derive from each stack's ID.
 
 ## Azure
 
@@ -182,7 +196,7 @@ az role assignment list --scope /subscriptions/<subscription-id> --query "[?prin
 az role assignment delete --ids <id> <id>
 ```
 
-A retry with the same **Installation Name** fails while those assignments remain. To start again without removing them, use a new installation name. Keep your DNS zone; the next deployment replaces the dashboard's DNS record.
+Deleting the sign-in group takes about 20 minutes, mostly for its Container Apps environment. A retry with the same **Installation Name** fails while those assignments remain. To start again without removing them, use a new installation name. Keep your DNS zone for a retry; the next deployment replaces the dashboard's DNS record. To remove everything, also delete the DNS zone's resource group.
 
 ## Google Cloud
 
@@ -270,7 +284,7 @@ Deleting the Infrastructure Manager deployment does not remove everything: the s
 gcloud projects delete $PROJECT
 ```
 
-To retry in the same project, create a new deployment with a new `installation_name`. Google Cloud keeps the ID of a deleted custom role reserved, and the template's role is named after the installation. Keep your DNS zone; the next deployment writes its own dashboard record.
+Shutting down the project stops billing immediately and deletes it after 30 days; it removes the DNS zone, custom-domain load balancers and every other resource in it. To retry in the same project, create a new deployment with a new `installation_name`. Google Cloud keeps the ID of a deleted custom role reserved, and the template's role is named after the installation. Keep your DNS zone; the next deployment writes its own dashboard record.
 
 ## Installation setup
 
