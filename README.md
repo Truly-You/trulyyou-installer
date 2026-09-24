@@ -163,6 +163,8 @@ aws route53 create-hosted-zone --name auth.example.com --caller-reference trulyy
 
 At your current DNS provider, add an `NS` record named `auth` for each of the four nameservers, then confirm the delegation with `dig SOA auth.example.com` before you deploy.
 
+![The hosted zone's NS record with its four name servers](https://docs.truly.you/assets/guides/aws/02-hosted-zone.jpg)
+
 ### 3. Deploy
 
 Choose **Deploy to AWS** and sign in. Select **Europe (Ireland)** `eu-west-1` or **US East (N. Virginia)** `us-east-1` in the console's region menu, then complete the form:
@@ -177,6 +179,8 @@ Choose **Deploy to AWS** and sign in. Select **Europe (Ireland)** `eu-west-1` or
 | InstanceType | Keep `t3.large`. |
 | UbuntuImage | Keep the default. |
 
+![The completed stack parameters](https://docs.truly.you/assets/guides/aws/03-parameters.jpg)
+
 Acknowledge that the template creates IAM resources, then choose **Create stack**. The same template from the terminal:
 
 ```sh
@@ -189,9 +193,13 @@ aws cloudformation create-stack --region eu-west-1 --stack-name trulyyou-dashboa
 
 The stack takes about three minutes. Its **Outputs** tab shows `DashboardUrl` and `StateBucket`.
 
+![The stack's Outputs tab](https://docs.truly.you/assets/guides/aws/04-outputs.jpg)
+
 ### 4. Wait for first boot
 
 Open the dashboard URL only after the stack is complete. Route 53 zones tell resolvers to remember a missing name for 15 minutes, so opening it before the record exists can leave your browser reporting that the site cannot be found for that long. The page responds about four minutes after the stack completes and shows **Setting up your dashboard** while it provisions its login backend (Lambda and DynamoDB) and secure gateway (ECS) in the account. Sign-in is typically available about seven minutes after the stack completes.
+
+![The dashboard while it finishes setup](https://docs.truly.you/assets/guides/shared/setup-in-progress.jpg)
 
 The template opens only ports 80 and 443. The instance's console output shows whether first boot completed (`Finished trulyyou.service`):
 

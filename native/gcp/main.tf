@@ -32,10 +32,11 @@ variable "install_code" {
   }
 }
 variable "owner_email" {
-  type = string
+  type        = string
+  description = "The email you requested the install code with."
   validation {
     condition     = can(regex("^[^ @]+@[^ @]+\\.[^ @]+$", var.owner_email))
-    error_message = "Enter the email to verify at first sign-in."
+    error_message = "Enter the email you requested the install code with."
   }
 }
 variable "dns_zone" { type = string }
