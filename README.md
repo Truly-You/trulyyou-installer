@@ -318,6 +318,8 @@ gcloud dns managed-zones describe trulyyou --project $PROJECT --format="value(na
 
 At your current DNS provider, add an `NS` record named `auth` for each of the four nameservers, then confirm the delegation with `dig NS auth.example.com` before you deploy.
 
+![The Cloud DNS zone and its four name servers](https://docs.truly.you/assets/guides/gcp/02-dns-zone.jpg)
+
 ### 3. Create the deployment service account
 
 Infrastructure Manager runs Terraform as a service account in your project. It needs these roles; they are not granted to TrulyYou:
@@ -358,9 +360,13 @@ gcloud infra-manager deployments apply projects/$PROJECT/locations/europe-west1/
 
 The deployment takes about three minutes. Its outputs, on the deployment's **Outputs** tab, are `dashboard_url` and the `state_bucket` that holds the installation's durable state.
 
+![The deployment's Outputs tab in Infrastructure Manager](https://docs.truly.you/assets/guides/gcp/04-outputs.jpg)
+
 ### 5. Wait for first boot
 
 The VM installs its runtime, checks your install code and downloads the dashboard image; the dashboard URL responds about three minutes after the deployment completes. It first shows **Setting up your dashboard** while it provisions its login backend (Cloud Functions and Firestore) and secure gateway (Cloud Run) in the project, and shows sign-in when that finishes. On a new project this takes about 15 minutes, most of it building the functions and the gateway image and issuing the gateway's certificate. The page refreshes itself.
+
+![The dashboard while it finishes setup](https://docs.truly.you/assets/guides/shared/setup-in-progress.jpg)
 
 The template opens only ports 80 and 443. To read the dashboard's log when the page shows **Setup needs attention**, allow SSH through Identity-Aware Proxy for the installation's network, then connect through it. Replace `trulyyou-dashboard` with your `installation_name`, and use zone `b` of your region:
 
