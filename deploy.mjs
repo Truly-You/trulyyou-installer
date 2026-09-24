@@ -72,6 +72,23 @@ try{
  config.vars={...config.vars,CONTROL_ORIGIN:control,ANDROID_CERT_FINGERPRINT:config.vars.ANDROID_CERT_FINGERPRINT||release.androidCertificate,...(signin?{SIGNIN_HOSTNAME:signin}:{}),COMPANY_NAME:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:setupToken,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
- await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);
+ const dashboardApp=`${name}-dashboard`;
+ const findDashboard=async()=>(await api(`/containers/applications?name=${encodeURIComponent(dashboardApp)}`)).find(application=>application.name===dashboardApp);
+ const previousImage=(await findDashboard().catch(()=>undefined))?.configuration?.image;
+ const deploy=()=>run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);
+ await deploy();
+ // A new Worker version restarts the dashboard before Cloudflare finishes rolling out a new image,
+ // so an upgrade would restart on the old one. Wait for the rollout, then restart once more.
+ const current=previousImage&&await findDashboard();
+ if(current&&current.configuration?.image!==previousImage){
+  console.log('Waiting for the new dashboard image to roll out.');
+  for(let attempt=0;attempt<60;attempt++){
+   const rollouts=await api(`/containers/applications/${current.id}/rollouts`);
+   if(rollouts.some(rollout=>rollout.target_configuration?.image===current.configuration.image&&rollout.status==='completed'))break;
+   if(attempt===59)throw Error('The dashboard image rollout did not finish. Redeploy to retry.');
+   await new Promise(resolve=>setTimeout(resolve,10_000));
+  }
+  await deploy();
+ }
  console.log('Dashboard: '+config.vars.DASHBOARD_ORIGIN);
 }finally{await rm(temporary,{recursive:true,force:true});}
