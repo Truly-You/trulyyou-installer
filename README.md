@@ -242,6 +242,8 @@ az network dns zone create --resource-group trulyyou-dns --name auth.example.com
 
 The second command prints four Azure nameservers. At your current DNS provider, add an `NS` record named `auth` for each of them, then confirm the delegation with `dig NS auth.example.com`. Copy the zone's **Resource ID** from its **Properties** page in the portal, or with `az network dns zone show --resource-group trulyyou-dns --name auth.example.com --query id --output tsv`.
 
+![The zone's overview in the Azure portal, with its four name servers](https://docs.truly.you/assets/guides/azure/02-dns-zone.jpg)
+
 ### 3. Deploy
 
 Choose **Deploy to Azure** and sign in. Select your subscription and a deployment region, then complete the form:
@@ -250,17 +252,30 @@ Choose **Deploy to Azure** and sign in. Select your subscription and a deploymen
 |---|---|
 | Installation Name | A name unique within the subscription, such as `trulyyou-production`. Use a new name for each dashboard. |
 | Location | `westeurope`, `eastus` or `westus`. |
-| Vm Size | `Standard_D2s_v6`, unless you confirmed Dsv5 quota in step 1. |
+| Vm Size | Keep `Standard_D2s_v6`, or choose `Standard_D2s_v5` if step 1 showed Dsv5 quota. |
 | Install Code | The install code from your approval email. |
 | Owner Email | The email you requested the install code with. |
 | Dns Zone Resource Id | The resource ID from step 2, beginning `/subscriptions/`. |
 | Dashboard Host | A new hostname inside that zone, such as `dashboard.auth.example.com`. |
 
-Choose **Review + create**, then **Create**. The deployment takes a few minutes. Its **Outputs** tab, under **Subscriptions → your subscription → Deployments**, shows `dashboardUrl` and the installation resource group.
+![The completed Azure deployment form](https://docs.truly.you/assets/guides/azure/03-deploy-form.jpg)
+
+Choose **Review + create**, then **Create**. The same template from the terminal:
+
+```sh
+az deployment sub create --name trulyyou-dashboard --location westeurope \
+  --template-uri https://raw.githubusercontent.com/Truly-You/trulyyou-installer/main/native/azure.json \
+  --parameters installationName=trulyyou-production vmSize=Standard_D2s_v6 installCode=<install-code> \
+  ownerEmail=owner@example.com dnsZoneResourceId=<zone-resource-id> dashboardHost=dashboard.auth.example.com
+```
+
+ The deployment takes a few minutes. Its **Outputs** tab, under **Subscriptions → your subscription → Deployments**, shows `dashboardUrl` and the installation resource group.
 
 ### 4. Wait for first boot
 
-The VM then installs its runtime, registers the installation and downloads the dashboard image. The dashboard URL starts responding about five minutes after the deployment completes; until then the browser reports that it cannot connect. It first shows **Setting up your dashboard** while it provisions its login backend, datastore and secure gateway in your subscription, and shows sign-in when that finishes. On a new subscription this takes about 30 minutes; most of it is Azure creating the gateway's first Container Apps environment. The page refreshes itself.
+The VM then installs its runtime, checks your install code and downloads the dashboard image. The dashboard URL starts responding about five minutes after the deployment completes; until then the browser reports that it cannot connect. It first shows **Setting up your dashboard** while it provisions its login backend, datastore and secure gateway in your subscription, and shows sign-in when that finishes. On a new subscription this takes about 30 minutes; most of it is Azure creating the gateway's first Container Apps environment. The page refreshes itself.
+
+![The dashboard while it finishes setup](https://docs.truly.you/assets/guides/shared/setup-in-progress.jpg)
 
 If the page shows **Setup needs attention**, read the dashboard's log on the VM. Replace the group and VM names with the installation resource group from the deployment outputs; the VM has the same name:
 
@@ -345,7 +360,7 @@ The deployment takes about three minutes. Its outputs, on the deployment's **Out
 
 ### 5. Wait for first boot
 
-The VM installs its runtime, registers the installation and downloads the dashboard image; the dashboard URL responds about three minutes after the deployment completes. It first shows **Setting up your dashboard** while it provisions its login backend (Cloud Functions and Firestore) and secure gateway (Cloud Run) in the project, and shows sign-in when that finishes. On a new project this takes about 15 minutes, most of it building the functions and the gateway image and issuing the gateway's certificate. The page refreshes itself.
+The VM installs its runtime, checks your install code and downloads the dashboard image; the dashboard URL responds about three minutes after the deployment completes. It first shows **Setting up your dashboard** while it provisions its login backend (Cloud Functions and Firestore) and secure gateway (Cloud Run) in the project, and shows sign-in when that finishes. On a new project this takes about 15 minutes, most of it building the functions and the gateway image and issuing the gateway's certificate. The page refreshes itself.
 
 The template opens only ports 80 and 443. To read the dashboard's log when the page shows **Setup needs attention**, allow SSH through Identity-Aware Proxy for the installation's network, then connect through it. Replace `trulyyou-dashboard` with your `installation_name`, and use zone `b` of your region:
 
