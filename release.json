@@ -1,8 +1,8 @@
 {
-  "version": "sha-ec5190b6e905d84501244e19d861bbdfe0640d67",
+  "version": "sha-55dd7e4492c24ffd208a3b1e76108cf0afa1946b",
   "images": {
-    "dashboard": "ghcr.io/truly-you/trulyyou-dashboard@sha256:5a6a09a59c58d1cb031267bba559ccfcda42e8baba41f709337bbbdcb6c62f39",
-    "gateway": "ghcr.io/truly-you/trulyyou-gateway@sha256:a51892089d240d5af3e69fd4410cff7163d5d3e42b0226a82fd31c78ed0b98da"
+    "dashboard": "ghcr.io/truly-you/trulyyou-dashboard@sha256:f806e5488e9f1d2f24d9167370ad512bf9fe7f0a4b1cd0a6434c80acba28e131",
+    "gateway": "ghcr.io/truly-you/trulyyou-gateway@sha256:c78ab7976de6ba5e15b1e71cb9d0a977965b167e592fd2da3b3dc8736e1259be"
   },
   "controlOrigin": "https://trulyyou-control.slick-run.workers.dev",
   "androidCertificate": "90:79:31:9D:D2:B3:8F:07:00:47:9F:C4:44:A5:F0:DE:E3:5B:71:4A:AF:06:B4:51:22:BC:F1:35:76:69:6D:B8"
