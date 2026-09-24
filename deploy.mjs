@@ -55,7 +55,8 @@ try{
  let claim;try{claim=JSON.parse(await readFile('.generated/download-claim.json','utf8'));}catch{claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
  if(claim.tokenHash!==createHash('sha256').update(downloadToken).digest('hex')){claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
  for(const name of ['dashboard','gateway']){
-  const destination=`registry.cloudflare.com/${account}/trulyyou-${name}:${release.version}`;
+  // One tag per source image: reusing a tag can read back the previous image straight after the push.
+  const destination=`registry.cloudflare.com/${account}/trulyyou-${name}:${release.images[name].split('@')[1].replace(':','-')}`;
   const grantResponse=await fetch(control+'/v1/installations/download',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:downloadToken,claim:claim.nonce,component:name,image:release.images[name]}),redirect:'error'});
   if(!grantResponse.ok)throw Error('Private release authorization failed. Check your setup/download grant.');
   const grant=await grantResponse.json();if(grant.image!==release.images[name]||grant.registry!=='ghcr.io'||typeof grant.registryToken!=='string')throw Error('Release authorization does not match the pinned image.');

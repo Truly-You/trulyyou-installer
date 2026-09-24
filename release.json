@@ -1,5 +1,5 @@
 {
-  "version": "sha-55dd7e4492c24ffd208a3b1e76108cf0afa1946b",
+  "version": "sha-77175c7582651a59150f8d13f2c0e5f5041d8665",
   "images": {
     "dashboard": "ghcr.io/truly-you/trulyyou-dashboard@sha256:2e0d8016e074cf8b96fed3746e1f31654ce24dfd757975943a9534d8125af5e8",
     "gateway": "ghcr.io/truly-you/trulyyou-gateway@sha256:d0c2902a2afa931c0e64665f56c2618cb3a20c9cc237958c15a9e82c59cceb31"

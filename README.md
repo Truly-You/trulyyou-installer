@@ -116,9 +116,9 @@ Choose **Sign in with TrulyYou**, scan the code with your phone, enter the owner
 
 ### Upgrade a Cloudflare installation
 
-To move to a new release, copy `release.json` from the [installer repository](https://github.com/Truly-You/trulyyou-installer) into your installer repository, commit it and push. Cloudflare Builds redeploys automatically; your form values in `wrangler.jsonc` and the token secret stay as they are. To redeploy without changes, push an empty commit.
+To move to a new release, copy every file from the [installer repository](https://github.com/Truly-You/trulyyou-installer) into your copy except `wrangler.jsonc` and `package.json`, then commit and push. Your form values live in those two files and the token is a secret, so they stay as they are. Cloudflare Builds redeploys automatically. To redeploy without changes, push an empty commit.
 
-A redeploy restarts the dashboard. If the page still shows the previous state a few minutes later, push an empty commit once more.
+The deploy waits until the new dashboard image has rolled out, then restarts the dashboard on it. Allow up to ten minutes before signing in again.
 
 ### Install from a terminal
 
