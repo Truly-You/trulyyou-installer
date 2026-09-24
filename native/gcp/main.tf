@@ -22,7 +22,15 @@ variable "installation_name" {
     error_message = "Use trulyyou- followed by 3–20 lowercase letters, digits or hyphens."
   }
 }
-variable "company_name" { type = string }
+variable "install_code" {
+  type        = string
+  sensitive   = true
+  description = "Install code from your TrulyYou approval email."
+  validation {
+    condition     = can(regex("^[a-f0-9-]{36}\\.[A-Za-z0-9_-]{43}$", var.install_code))
+    error_message = "Paste the install code from your TrulyYou approval email."
+  }
+}
 variable "owner_email" {
   type = string
   validation {
@@ -142,7 +150,7 @@ resource "google_compute_instance" "dashboard" {
   metadata = { block-project-ssh-keys = "true" }
   metadata_startup_script = templatefile("${path.module}/startup.sh.tftpl", { config = base64encode(jsonencode({
     provider = "gcp", target = var.project_id, region = var.region,
-    zone     = var.dns_zone, domain = var.dashboard_host, company = var.company_name,
+    zone     = var.dns_zone, domain = var.dashboard_host, installCode = var.install_code,
     owner    = var.owner_email, name = local.name, bucket = google_storage_bucket.state.name,
     image    = "ghcr.io/truly-you/trulyyou-dashboard@sha256:2e0d8016e074cf8b96fed3746e1f31654ce24dfd757975943a9534d8125af5e8"
   })) })

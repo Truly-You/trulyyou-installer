@@ -2,7 +2,7 @@
 import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import {createHash,randomBytes} from 'node:crypto';
-import {registerInstallation} from './register.mjs';
+import {checkInstallCode} from './install-code.mjs';
 import {dashboardAddress} from './address.mjs';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
@@ -16,6 +16,7 @@ const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
 // Use the build credential only for deployment; never persist it as the runtime token.
 const token=process.env.PROVISIONING_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
 const hostname=process.env.DASHBOARD_HOSTNAME||config.vars.DASHBOARD_HOSTNAME;
+const installCode=process.env.INSTALL_CODE||config.vars.INSTALL_CODE;
 const signin=(process.env.SIGNIN_HOSTNAME||config.vars.SIGNIN_HOSTNAME||'').trim().toLowerCase();
 if(signin&&signin===hostname?.trim().toLowerCase())throw Error('Use a different hostname for SIGNIN_HOSTNAME and DASHBOARD_HOSTNAME.');
 dashboardAddress(hostname,config.name,'validation');
@@ -37,8 +38,9 @@ try{
   const saved=await response.json();
   if(!response.ok||!saved.success||!saved.result?.some(secret=>secret.name==='PROVISIONING_TOKEN'))throw Error('Enter PROVISIONING_TOKEN in the Cloudflare deployment form before deploying.');
  }
- await mkdir('.generated',{recursive:true});
- const setupToken=process.env.SETUP_TOKEN||await registerInstallation({file:'.generated/registration.json',provider:'cloudflare',ownerEmail:owner,company:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',controlOrigin:control});
+ // Only an approved install code may install, and only for this owner and dashboard.
+ const {installCode:setupToken,company}=await checkInstallCode({installCode,ownerEmail:owner,origin:hostname?'https://'+hostname.trim().toLowerCase():undefined,controlOrigin:control});
+ console.log(`Install code accepted for ${company}.`);
  const platform=os.platform()==='darwin'&&os.arch()==='arm64'?'Darwin_arm64':os.platform()==='linux'&&os.arch()==='x64'?'Linux_x86_64':null;
  if(!platform)throw Error('The installer supports Cloudflare Builds (Linux x64) and Apple Silicon.');
  const checksums={Darwin_arm64:'2231fc8df8806d20d680ff1225db44e095a55dd6ac1ae8eced4faf4b278b78fb',Linux_x86_64:'0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0'};
@@ -70,7 +72,8 @@ try{
  const address=dashboardAddress(hostname,name,subdomain.subdomain);
  config.name=name;config.account_id=account;config.containers[0].image=images.dashboard;
  if(address.routes)config.routes=address.routes;
- config.vars={...config.vars,CONTROL_ORIGIN:control,ANDROID_CERT_FINGERPRINT:config.vars.ANDROID_CERT_FINGERPRINT||release.androidCertificate,...(signin?{SIGNIN_HOSTNAME:signin}:{}),COMPANY_NAME:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
+ config.vars={...config.vars,CONTROL_ORIGIN:control,ANDROID_CERT_FINGERPRINT:config.vars.ANDROID_CERT_FINGERPRINT||release.androidCertificate,...(signin?{SIGNIN_HOSTNAME:signin}:{}),COMPANY_NAME:company,DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
+ delete config.vars.INSTALL_CODE;
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:setupToken,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
  const dashboardApp=`${name}-dashboard`;

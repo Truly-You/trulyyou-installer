@@ -11,6 +11,9 @@
   },
   "cloudflare": {
     "bindings": {
+      "INSTALL_CODE": {
+        "description": "The install code from your TrulyYou approval email. Request one at docs.truly.you. It works for this installation only."
+      },
       "DASHBOARD_HOSTNAME": {
         "description": "Optional dashboard hostname in your Cloudflare account, such as auth-dashboard.example.com. Leave empty for workers.dev."
       },
@@ -22,9 +25,6 @@
       },
       "PROVISIONING_TOKEN": {
         "description": "Your Cloudflare API token for the dashboard (see the guide for its permissions). Stored only in your installation."
-      },
-      "COMPANY_NAME": {
-        "description": "Your company name, used for dashboard emails."
       },
       "SIGNIN_HOSTNAME": {
         "description": "Optional sign-in hostname in the same zone, such as signin.example.com. Leave empty to use signin.<zone>."

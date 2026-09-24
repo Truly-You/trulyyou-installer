@@ -49,7 +49,7 @@
     "SIGNIN_HOSTNAME": "",
     "CLOUDFLARE_ACCOUNT_ID": "",
     "CLOUDFLARE_ZONE_ID": "",
-    "COMPANY_NAME": ""
+    "INSTALL_CODE": ""
   },
   "version_metadata": {
     "binding": "WORKER_VERSION"

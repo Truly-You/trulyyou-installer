@@ -31,10 +31,13 @@
         "description": "Choose a VM family with quota in the selected region (2 vCPUs, 8 GiB RAM)."
       }
     },
-    "companyName": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+    "installCode": {
+      "type": "securestring",
+      "minLength": 80,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Install code from your TrulyYou approval email"
+      }
     },
     "ownerEmail": {
       "type": "string",
@@ -91,8 +94,8 @@
           "vmSize": {
             "value": "[parameters('vmSize')]"
           },
-          "companyName": {
-            "value": "[parameters('companyName')]"
+          "installCode": {
+            "value": "[parameters('installCode')]"
           },
           "ownerEmail": {
             "value": "[parameters('ownerEmail')]"
@@ -117,8 +120,8 @@
             "vmSize": {
               "type": "string"
             },
-            "companyName": {
-              "type": "string"
+            "installCode": {
+              "type": "securestring"
             },
             "ownerEmail": {
               "type": "string"
@@ -333,7 +336,7 @@
                   "computerName": "[variables('name')]",
                   "adminUsername": "trulyyou",
                   "adminPassword": "[parameters('vmPassword')]",
-                  "customData": "[base64(concat('#!/bin/bash\nset -euo pipefail\numask 077\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y docker.io python3-venv curl unzip\nsystemctl enable --now docker\nmkdir -p /opt/trulyyou\ncurl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-b04da13bc94624065c5c208c7c71dd6df7235f6d269783849491c6a313a000ef.zip -o /opt/trulyyou/bootstrap.zip\necho ''b04da13bc94624065c5c208c7c71dd6df7235f6d269783849491c6a313a000ef  /opt/trulyyou/bootstrap.zip'' | sha256sum -c -\nunzip -oq /opt/trulyyou/bootstrap.zip -d /opt/trulyyou\npython3 -m venv /opt/trulyyou-boot\n/opt/trulyyou-boot/bin/pip install boto3 google-cloud-storage azure-identity azure-storage-blob\nprintf ''%s'' ''',base64(string(createObject('provider','azure','target',subscription().subscriptionId,'tenantId',subscription().tenantId,'region',parameters('location'),'zone',parameters('dnsZoneResourceId'),'domain',parameters('dashboardHost'),'owner',parameters('ownerEmail'),'company',parameters('companyName'),'name',variables('name'),'bucket','installation','account',variables('account'),'clientId',reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name')), '2023-01-31').clientId,'image','ghcr.io/truly-you/trulyyou-dashboard@sha256:2e0d8016e074cf8b96fed3746e1f31654ce24dfd757975943a9534d8125af5e8'))),''' | base64 -d > /opt/trulyyou/native.json\n\ncat > /etc/systemd/system/trulyyou.service <<''UNIT''\n[Unit]\nDescription=TrulyYou installation\nAfter=network-online.target docker.service\nWants=network-online.target\nRequires=docker.service\nStartLimitIntervalSec=0\n[Service]\nType=oneshot\nExecStart=/opt/trulyyou-boot/bin/python /opt/trulyyou/bootstrap.py\nRemainAfterExit=yes\nRestart=on-failure\nRestartSec=30\n[Install]\nWantedBy=multi-user.target\nUNIT\nsystemctl daemon-reload\nsystemctl enable --now trulyyou\n'))]",
+                  "customData": "[base64(concat('#!/bin/bash\nset -euo pipefail\numask 077\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y docker.io python3-venv curl unzip\nsystemctl enable --now docker\nmkdir -p /opt/trulyyou\ncurl --fail --silent --show-error --retry 5 https://docs.truly.you/assets/native/bootstrap-b063ac095106987dff5ace89548768ff380e1a3ae81f446425d94e84d07c6ac5.zip -o /opt/trulyyou/bootstrap.zip\necho ''b063ac095106987dff5ace89548768ff380e1a3ae81f446425d94e84d07c6ac5  /opt/trulyyou/bootstrap.zip'' | sha256sum -c -\nunzip -oq /opt/trulyyou/bootstrap.zip -d /opt/trulyyou\npython3 -m venv /opt/trulyyou-boot\n/opt/trulyyou-boot/bin/pip install boto3 google-cloud-storage azure-identity azure-storage-blob\nprintf ''%s'' ''',base64(string(createObject('provider','azure','target',subscription().subscriptionId,'tenantId',subscription().tenantId,'region',parameters('location'),'zone',parameters('dnsZoneResourceId'),'domain',parameters('dashboardHost'),'owner',parameters('ownerEmail'),'installCode',parameters('installCode'),'name',variables('name'),'bucket','installation','account',variables('account'),'clientId',reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('name')), '2023-01-31').clientId,'image','ghcr.io/truly-you/trulyyou-dashboard@sha256:2e0d8016e074cf8b96fed3746e1f31654ce24dfd757975943a9534d8125af5e8'))),''' | base64 -d > /opt/trulyyou/native.json\n\ncat > /etc/systemd/system/trulyyou.service <<''UNIT''\n[Unit]\nDescription=TrulyYou installation\nAfter=network-online.target docker.service\nWants=network-online.target\nRequires=docker.service\nStartLimitIntervalSec=0\n[Service]\nType=oneshot\nExecStart=/opt/trulyyou-boot/bin/python /opt/trulyyou/bootstrap.py\nRemainAfterExit=yes\nRestart=on-failure\nRestartSec=30\n[Install]\nWantedBy=multi-user.target\nUNIT\nsystemctl daemon-reload\nsystemctl enable --now trulyyou\n'))]",
                   "linuxConfiguration": {
                     "disablePasswordAuthentication": false
                   }

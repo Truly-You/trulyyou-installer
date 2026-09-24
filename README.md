@@ -2,13 +2,11 @@
 
 The installer runs the dashboard, secure gateway and application backend in your own cloud account. Install one dashboard per company; each app you create in it gets its own backend and datastore.
 
-## Choose your cloud
+## Before you start
 
-Open [Deploy your dashboard](https://docs.truly.you/?guide=self-host) and choose Cloudflare, AWS, Azure or Google Cloud. Each button opens that cloud's own deployment form. TrulyYou never receives access to your cloud account.
+You need an install code from TrulyYou. On [Deploy your dashboard](https://docs.truly.you/?guide=self-host), enter your company, your work email and what you plan to use TrulyYou for, then confirm the code we email you. Once we approve the request, we email you a one-time install code. It is valid for 14 days and installs one dashboard; that dashboard keeps using it for upgrades. Use the same email as the dashboard owner.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Truly-You/trulyyou-installer)
-
-Before you start, on every cloud, have:
+On every cloud, also have:
 
 - **A dedicated account, subscription or project** with billing enabled. The installer creates resources and role assignments across it.
 - **A public DNS zone hosted by that cloud** (Cloudflare, Route 53, Azure DNS or Cloud DNS) and a new, unused hostname in it for the dashboard, such as `dashboard.auth.example.com`. If your domain is hosted elsewhere, delegate a subdomain to that cloud and confirm it resolves **before** you deploy; see [Azure](#azure) or [Google Cloud](#google-cloud). Until the delegation is live, a wildcard record in the parent domain can answer for the dashboard hostname, and its HTTPS certificate request fails.
@@ -80,13 +78,13 @@ Select the account and tick **Create private Git repository**. The repository ho
 | Field | Value |
 |---|---|
 | Project name | The dashboard Worker's name, such as `trulyyou-dashboard`. |
+| `INSTALL_CODE` | The install code from your approval email. |
 | `PROVISIONING_TOKEN` | The token from step 1. |
-| `OWNER_EMAIL` | The designated owner's email. They verify it at first sign-in. |
+| `OWNER_EMAIL` | The email you requested the install code with. You verify it at first sign-in. |
 | `DASHBOARD_HOSTNAME` | The dashboard hostname from **Before you start**. Leave empty to use a `workers.dev` address. |
 | `SIGNIN_HOSTNAME` | Optional. The sign-in hostname, in the same zone. Leave empty to use `signin.<your zone>`. |
 | `CLOUDFLARE_ACCOUNT_ID` | Your account ID, shown on your Cloudflare account home and in the dashboard address. |
 | `CLOUDFLARE_ZONE_ID` | The zone's ID, from the zone's **Overview** page. |
-| `COMPANY_NAME` | Your company name, shown in dashboard emails. |
 
 ![Owner, hostname and sign-in fields](https://docs.truly.you/assets/guides/cloudflare/09-form-fields.jpg)
 
@@ -122,7 +120,7 @@ The deploy waits until the new dashboard image has rolled out, then restarts the
 
 ### Install from a terminal
 
-On Apple Silicon or Linux x64, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, and fill in the same fields under `vars` in `wrangler.jsonc`. Then pass the token in the environment, for example `PROVISIONING_TOKEN=<token> npm run deploy`. The installer does not read `.dev.vars` or `.env` files. Keep the generated `.generated/` directory: rerunning from it resumes the same installation.
+On Apple Silicon or Linux x64, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, and fill in the same fields under `vars` in `wrangler.jsonc`. Then pass the token in the environment, for example `PROVISIONING_TOKEN=<token> npm run deploy`. `INSTALL_CODE` goes under `vars` with the other fields. The installer does not read `.dev.vars` or `.env` files. Keep the generated `.generated/` directory: rerunning from it resumes the same installation.
 
 ### Remove a Cloudflare installation
 
@@ -138,9 +136,7 @@ Container images copied into your Cloudflare registry remain until you delete th
 
 ## AWS, Azure and Google Cloud
 
-Each deploy button opens the provider's native deployment portal. AWS uses a CloudFormation quick-create template ([step-by-step below](#aws)); Azure uses a subscription ARM template ([step-by-step below](#azure)); Google Cloud uses a Terraform template in Infrastructure Manager ([step-by-step below](#google-cloud)).
-
-Use a dedicated account, subscription or project with billing enabled and an existing public DNS zone. Enter a new, unused dashboard hostname in that zone, your company and the designated owner email. Templates create HTTPS ingress, a dedicated dashboard VM, private versioned object storage and a deployment identity. The VM generates and checkpoints its installation credentials in that private storage, then downloads the pinned private dashboard image. The dashboard provisions the login backend and its datastore and gateway. Open the dashboard URL in the deployment outputs to follow setup; a completed infrastructure deployment alone does not mean login provisioning has finished.
+Use a dedicated account, subscription or project with billing enabled and an existing public DNS zone. Enter a new, unused dashboard hostname in that zone, your install code and the owner email you requested it with. Templates create HTTPS ingress, a dedicated dashboard VM, private versioned object storage and a deployment identity. The VM generates and checkpoints its installation credentials in that private storage, then downloads the pinned private dashboard image. The dashboard provisions the login backend and its datastore and gateway. Open the dashboard URL in the deployment outputs to follow setup; a completed infrastructure deployment alone does not mean login provisioning has finished.
 
 Supported regions are AWS `eu-west-1` and `us-east-1`, Azure `westeurope`, `eastus` and `westus`, and Google Cloud `europe-west1` and `us-central1`.
 
@@ -174,8 +170,8 @@ Choose **Deploy to AWS** and sign in. Select **Europe (Ireland)** `eu-west-1` or
 | Field | Value |
 |---|---|
 | Stack name | Any name, such as `trulyyou-dashboard`. Resource names derive from the stack ID, so a second stack does not collide. |
-| CompanyName | Your company name, shown in dashboard emails. |
-| OwnerEmail | The designated owner's email. |
+| InstallCode | The install code from your approval email. |
+| OwnerEmail | The email you requested the install code with. |
 | DnsZone | The hosted zone from step 2, chosen from the list. |
 | DashboardHost | A new hostname inside that zone, such as `dashboard.auth.example.com`. |
 | InstanceType | Keep `t3.large`. |
@@ -187,7 +183,7 @@ Acknowledge that the template creates IAM resources, then choose **Create stack*
 aws cloudformation create-stack --region eu-west-1 --stack-name trulyyou-dashboard \
   --template-url https://trulyyou-deploy-templates-956315803825.s3.eu-west-1.amazonaws.com/native/aws.json \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameters \
-  ParameterKey=CompanyName,ParameterValue="Your company" ParameterKey=OwnerEmail,ParameterValue=owner@example.com \
+  ParameterKey=InstallCode,ParameterValue=<install-code> ParameterKey=OwnerEmail,ParameterValue=owner@example.com \
   ParameterKey=DnsZone,ParameterValue=<hosted-zone-id> ParameterKey=DashboardHost,ParameterValue=dashboard.auth.example.com
 ```
 
@@ -255,8 +251,8 @@ Choose **Deploy to Azure** and sign in. Select your subscription and a deploymen
 | Installation Name | A name unique within the subscription, such as `trulyyou-production`. Use a new name for each dashboard. |
 | Location | `westeurope`, `eastus` or `westus`. |
 | Vm Size | `Standard_D2s_v6`, unless you confirmed Dsv5 quota in step 1. |
-| Company Name | Your company name, shown in dashboard emails. |
-| Owner Email | The designated owner's email. |
+| Install Code | The install code from your approval email. |
+| Owner Email | The email you requested the install code with. |
 | Dns Zone Resource Id | The resource ID from step 2, beginning `/subscriptions/`. |
 | Dashboard Host | A new hostname inside that zone, such as `dashboard.auth.example.com`. |
 
@@ -331,8 +327,8 @@ In [Infrastructure Manager](https://console.cloud.google.com/infra-manager), cho
 | `project_id` | The project ID from step 1. |
 | `region` | `europe-west1` (default) or `us-central1`. |
 | `installation_name` | `trulyyou-` followed by 3–20 lowercase letters, digits or hyphens, such as `trulyyou-production`. Default `trulyyou-dashboard`. The VM, network and bucket use this name. |
-| `company_name` | Your company name, shown in dashboard emails. |
-| `owner_email` | The designated owner's email. |
+| `install_code` | The install code from your approval email. |
+| `owner_email` | The email you requested the install code with. |
 | `dns_zone` | The zone **name** from step 2, such as `trulyyou`, not its domain. |
 | `dashboard_host` | A new hostname inside that zone, such as `dashboard.auth.example.com`. |
 
@@ -374,7 +370,7 @@ Shutting down the project stops billing immediately and deletes it after 30 days
 
 ## Installation setup
 
-The installer generates a random installation ID and secret locally, registers their hash with TrulyYou, and saves the credential privately. It expires after 24 hours and activates one installation. It is never placed in a deployment URL or committed to a repository.
+The installer checks your install code with TrulyYou before it creates anything. The code activates one dashboard: at first start, the dashboard exchanges it for its own credential, and a second dashboard cannot use it. The same dashboard keeps using the code to download new releases. Keep it private; on Cloudflare it is stored in your private repository copy.
 
 When the dashboard first starts, it provisions its own sign-in app in your account: the Dashboard application, login method and screens, production and preview backends, their datastores and the packet gateway. On Cloudflare these are Workers, D1 databases and a container; on Azure, Function Apps, Cosmos DB and a Container App in a separate resource group; on Google Cloud, Cloud Functions, Firestore databases and a Cloud Run gateway in the same project. It verifies gateway connectivity before enabling sign-in. The dashboard URL shows **Setting up your dashboard** until then. The sign-in app is served on `signin.<zone>`, for example `signin.auth.example.com` for the zone `auth.example.com`, so your staff never see a provider hostname; keep that name free in the zone. On Google Cloud, sign-in uses the provider hostname until Google issues the certificate for it, usually within an hour, then switches automatically.
 
