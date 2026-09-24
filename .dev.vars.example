@@ -1,2 +1,2 @@
 # Cloudflare stores these as Worker secrets. Never commit filled-in values.
-PROVISIONING_TOKEN=REPLACE_WITH_YOUR_CLOUDFLARE_PROVISIONING_TOKEN
+PROVISIONING_TOKEN=

@@ -21,10 +21,13 @@
         "description": "An active DNS zone in your account for the secure packet gateway."
       },
       "PROVISIONING_TOKEN": {
-        "description": "Your Cloudflare token with Workers, D1, Containers/registry and zone DNS permissions. Stored only in your installation."
+        "description": "Your Cloudflare API token for the dashboard (see the guide for its permissions). Stored only in your installation."
       },
       "COMPANY_NAME": {
         "description": "Your company name, used for dashboard emails."
+      },
+      "SIGNIN_HOSTNAME": {
+        "description": "Optional sign-in hostname in the same zone, such as signin.example.com. Leave empty to use signin.<zone>."
       }
     }
   }

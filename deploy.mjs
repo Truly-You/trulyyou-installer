@@ -6,6 +6,9 @@ import {registerInstallation} from './register.mjs';
 import {dashboardAddress} from './address.mjs';
 import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),config=JSON.parse(await readFile('wrangler.jsonc','utf8'));
+// TrulyYou-controlled values ship with the pinned release, not in the customer's form.
+const release=JSON.parse(await readFile('release.json','utf8'));
+const control=config.vars.CONTROL_ORIGIN||release.controlOrigin;
 const account=process.env.CLOUDFLARE_ACCOUNT_ID||config.vars.CLOUDFLARE_ACCOUNT_ID;
 const owner=process.env.OWNER_EMAIL||config.vars.OWNER_EMAIL;
 const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
@@ -13,6 +16,8 @@ const zone=process.env.CLOUDFLARE_ZONE_ID||config.vars.CLOUDFLARE_ZONE_ID;
 // Use the build credential only for deployment; never persist it as the runtime token.
 const token=process.env.PROVISIONING_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
 const hostname=process.env.DASHBOARD_HOSTNAME||config.vars.DASHBOARD_HOSTNAME;
+const signin=(process.env.SIGNIN_HOSTNAME||config.vars.SIGNIN_HOSTNAME||'').trim().toLowerCase();
+if(signin&&signin===hostname?.trim().toLowerCase())throw Error('Use a different hostname for SIGNIN_HOSTNAME and DASHBOARD_HOSTNAME.');
 dashboardAddress(hostname,config.name,'validation');
 if(!token)throw Error('Cloudflare build credentials are unavailable. For a local deployment, set PROVISIONING_TOKEN.');
 if(!/^[a-f0-9]{32}$/.test(account??''))throw Error('Set CLOUDFLARE_ACCOUNT_ID before deploying.');
@@ -33,7 +38,7 @@ try{
   if(!response.ok||!saved.success||!saved.result?.some(secret=>secret.name==='PROVISIONING_TOKEN'))throw Error('Enter PROVISIONING_TOKEN in the Cloudflare deployment form before deploying.');
  }
  await mkdir('.generated',{recursive:true});
- const setupToken=process.env.SETUP_TOKEN||await registerInstallation({file:'.generated/registration.json',provider:'cloudflare',ownerEmail:owner,company:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',controlOrigin:config.vars.CONTROL_ORIGIN});
+ const setupToken=process.env.SETUP_TOKEN||await registerInstallation({file:'.generated/registration.json',provider:'cloudflare',ownerEmail:owner,company:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',controlOrigin:control});
  const platform=os.platform()==='darwin'&&os.arch()==='arm64'?'Darwin_arm64':os.platform()==='linux'&&os.arch()==='x64'?'Linux_x86_64':null;
  if(!platform)throw Error('The installer supports Cloudflare Builds (Linux x64) and Apple Silicon.');
  const checksums={Darwin_arm64:'2231fc8df8806d20d680ff1225db44e095a55dd6ac1ae8eced4faf4b278b78fb',Linux_x86_64:'0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0'};
@@ -44,14 +49,14 @@ try{
  const api=async(route,body)=>{const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}${route}`,{method:body?'POST':'GET',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok||!data.success)throw Error('Cloudflare setup failed: '+route);return data.result;};
  const credentials=await api('/containers/registries/registry.cloudflare.com/credentials',{expiration_minutes:60,permissions:['push','pull']});
  await run(crane,['auth','login','registry.cloudflare.com','--username',credentials.username,'--password-stdin'],credentials.password,true);
- const release=JSON.parse(await readFile('release.json','utf8')),images={};
+ const images={};
  const downloadToken=process.env.DOWNLOAD_TOKEN||setupToken;
  await mkdir('.generated',{recursive:true});
  let claim;try{claim=JSON.parse(await readFile('.generated/download-claim.json','utf8'));}catch{claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
  if(claim.tokenHash!==createHash('sha256').update(downloadToken).digest('hex')){claim={tokenHash:createHash('sha256').update(downloadToken).digest('hex'),nonce:randomBytes(32).toString('base64url')};await writeFile('.generated/download-claim.json',JSON.stringify(claim),{mode:0o600});}
  for(const name of ['dashboard','gateway']){
   const destination=`registry.cloudflare.com/${account}/trulyyou-${name}:${release.version}`;
-  const grantResponse=await fetch(config.vars.CONTROL_ORIGIN+'/v1/installations/download',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:downloadToken,claim:claim.nonce,component:name,image:release.images[name]}),redirect:'error'});
+  const grantResponse=await fetch(control+'/v1/installations/download',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:downloadToken,claim:claim.nonce,component:name,image:release.images[name]}),redirect:'error'});
   if(!grantResponse.ok)throw Error('Private release authorization failed. Check your setup/download grant.');
   const grant=await grantResponse.json();if(grant.image!==release.images[name]||grant.registry!=='ghcr.io'||typeof grant.registryToken!=='string')throw Error('Release authorization does not match the pinned image.');
   const auth=JSON.parse(await readFile(path.join(temporary,'config.json'),'utf8'));auth.auths['ghcr.io']={registrytoken:grant.registryToken};await writeFile(path.join(temporary,'config.json'),JSON.stringify(auth),{mode:0o600});
@@ -64,7 +69,7 @@ try{
  const address=dashboardAddress(hostname,name,subdomain.subdomain);
  config.name=name;config.account_id=account;config.containers[0].image=images.dashboard;
  if(address.routes)config.routes=address.routes;
- config.vars={...config.vars,COMPANY_NAME:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
+ config.vars={...config.vars,CONTROL_ORIGIN:control,ANDROID_CERT_FINGERPRINT:config.vars.ANDROID_CERT_FINGERPRINT||release.androidCertificate,...(signin?{SIGNIN_HOSTNAME:signin}:{}),COMPANY_NAME:process.env.COMPANY_NAME||config.vars.COMPANY_NAME||'Dashboard',DASHBOARD_WORKER_NAME:name,OWNER_EMAIL:owner,CLOUDFLARE_ZONE_ID:zone,CLOUDFLARE_ACCOUNT_ID:account,GATEWAY_IMAGE:images.gateway,DASHBOARD_ORIGIN:hostname?address.origin:(config.vars.DASHBOARD_ORIGIN||address.origin)};
  await mkdir('.generated',{recursive:true});await writeFile('.generated/wrangler.json',JSON.stringify({...config,main:path.resolve(root,config.main)},null,2));
  const secretsFile=path.join(temporary,'bootstrap-secrets.json');await writeFile(secretsFile,JSON.stringify({SETUP_TOKEN:setupToken,PROVISIONING_TOKEN:process.env.PROVISIONING_TOKEN}),{mode:0o600});
  await run(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config','.generated/wrangler.json','--secrets-file',secretsFile,'--containers-rollout','immediate']);
