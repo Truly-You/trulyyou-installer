@@ -15,8 +15,6 @@ Before you start, on every cloud, have:
 - **An owner email inbox you can read during setup.** The dashboard sends the first sign-in code there.
 - **A phone with the TrulyYou authenticator.** The owner approves the first sign-in on it.
 
-Every installer has been deployed into a fresh cloud account through to a running dashboard. Owner sign-in has been completed on Cloudflare, Azure and Google Cloud; on AWS the dashboard reached sign-in, and owner sign-in is still to be confirmed.
-
 ## Cloudflare configuration
 
 Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, plus an active DNS zone for the secure gateway. The deploy button copies the small installer into your GitHub account and runs it in Cloudflare Builds. The images remain private. The automatically generated setup credential authorizes one download session and exchanges for short-lived, read-only registry credentials. The installer copies the pinned images into your own Cloudflare registry; no Docker daemon or external host is required.
@@ -56,7 +54,7 @@ Each deploy button opens the provider's native deployment portal. AWS uses a Clo
 
 Use a dedicated account, subscription or project with billing enabled and an existing public DNS zone. Enter a new, unused dashboard hostname in that zone, your company and the designated owner email. Templates create HTTPS ingress, a dedicated dashboard VM, private versioned object storage and a deployment identity. The VM generates and checkpoints its installation credentials in that private storage, then downloads the pinned private dashboard image. The dashboard provisions the login backend and its datastore and gateway. Open the dashboard URL in the deployment outputs to follow setup; a completed infrastructure deployment alone does not mean login provisioning has finished.
 
-Supported regions are AWS `eu-west-1` and `us-east-1`, Azure `westeurope`, `eastus` and `westus`, and Google Cloud `europe-west1` and `us-central1`. The step-by-step sections below were written from those deployments, including the fixes they required.
+Supported regions are AWS `eu-west-1` and `us-east-1`, Azure `westeurope`, `eastus` and `westus`, and Google Cloud `europe-west1` and `us-central1`.
 
 When you remove an installation for good and delete the DNS zone you created for it, also delete the `NS` records that delegate that subdomain at your parent DNS provider. A delegation to a deleted zone lets anyone who creates a zone of the same name at that provider serve content on your subdomain.
 
@@ -296,23 +294,23 @@ Your designated owner receives the global Owner role. Being the first visitor or
 
 ## Dashboard emails
 
-Dashboard sign-in emails are delivered through TrulyYou's restricted email relay, for example `Your company <signin@your-company-1234abcd.truly.you>`. TrulyYou configures and verifies the sending subdomain. You do not need a Resend account or API key.
+Dashboard sign-in emails are delivered through TrulyYou's restricted email relay, for example `Your company <signin@your-company-1234abcd.truly.you>`. TrulyYou configures and verifies the sending subdomain; you do not need an email provider of your own.
 
 During provisioning, the generated setup credential is exchanged for a restricted installation credential. This credential is saved in encrypted installation state and in the Dashboard backend's production secrets. It permits predefined dashboard sign-in emails, with sending limits; it cannot select arbitrary senders or email content.
 
-Until the designated owner verifies their first sign-in, the relay can only send verification mail to that owner. TrulyYou generates and checks this first code; the installer cannot mark itself verified. After verification, the company sender is provisioned in the background and restricted staff sign-in and invitation delivery is enabled. The verified TrulyYou sender handles delivery until the company sender is ready, so sender-domain quotas or DNS delays do not block owner verification. The relay receives staff recipient addresses and sign-in codes for delivery through Resend. It does not receive your cloud credentials, customer database or proofs. Email sign-in depends on availability of the relay. TrulyYou can revoke an installation's email credential without accessing its infrastructure.
+Until the designated owner verifies their first sign-in, the relay can only send verification mail to that owner, and TrulyYou generates and checks that first code. After verification, staff sign-in and invitation emails are enabled. The relay receives only staff recipient addresses and sign-in codes; it never receives your cloud credentials, customer data or proofs. TrulyYou can revoke an installation's email credential without accessing its infrastructure.
 
 ## Restarts and recovery
 
 Container or VM replacement retains applications, encrypted cloud connections and access configuration in your installation storage: Durable Objects on Cloudflare, or the private storage account, bucket or S3 bucket on the other clouds. Setup retries reuse the saved credential and provisioned resources. Once configured, setup cannot replace the owner or reopen access. Keep that storage when upgrading.
 
-If initial provisioning fails, correct its configuration and restart the container, or on AWS, Azure and Google Cloud, restart the VM. For an expired setup token, obtain a replacement for the same unactivated installation. Do not delete durable state to repair a login problem.
+If initial provisioning fails, correct its configuration and restart the container, or on AWS, Azure and Google Cloud, restart the VM. If the setup credential expired before the installation activated, contact TrulyYou for a replacement for the same installation. Do not delete durable state to repair a login problem.
 
 ## Usage reporting
 
 Every six hours the dashboard sends TrulyYou an aggregate usage report, signed with its installation credential. It contains only counts: the number of apps, active devices over the last day and 30 days, completed and total requests, the clouds your apps run on, how many deployments are ready or failed, and the dashboard version. Device, customer and subject identifiers, method inputs, proofs and datastore contents never leave your cloud. Your dashboard's own sign-in app is excluded.
 
-We use these reports to support your installation and, later, for active-device billing. Subscription enforcement is not yet implemented.
+TrulyYou uses these reports to support your installation and to measure usage.
 
 ## Deployment costs
 
