@@ -15,36 +15,124 @@ Before you start, on every cloud, have:
 - **An owner email inbox you can read during setup.** The dashboard sends the first sign-in code there.
 - **A phone with the TrulyYou authenticator.** The owner approves the first sign-in on it.
 
-## Cloudflare configuration
+## Cloudflare
 
-Use a Cloudflare account with the Workers paid plan, Containers and D1 enabled, plus an active DNS zone for the secure gateway. The deploy button copies the small installer into your GitHub account and runs it in Cloudflare Builds. The images remain private. The automatically generated setup credential authorizes one download session and exchanges for short-lived, read-only registry credentials. The installer copies the pinned images into your own Cloudflare registry; no Docker daemon or external host is required.
+Install on Cloudflare with **Deploy to Cloudflare**, or [from a terminal](#install-from-a-terminal) if you prefer not to connect a Git account. Both produce the same installation.
 
-You need one credential of your own: **`PROVISIONING_TOKEN`**, a Cloudflare API token the running dashboard uses to create each app's Workers, D1 databases, gateway container and DNS records. Create it in **My Profile → API Tokens → Create Token → Custom token** with edit access to Workers, D1 and Containers on your account, and DNS edit access on the gateway zone. Everything else is generated for you: Cloudflare Builds deploys with its own build credential, and the installer creates and stores its TrulyYou setup credential as a Worker secret.
+### Before you start
 
-In the Cloudflare deployment form, choose your account and fill in:
+- A Cloudflare account on the **Workers Paid** plan.
+- An active DNS zone in that account, such as `example.com`, with two unused hostnames in it: one for the dashboard, such as `auth-dashboard.example.com`, and optionally one for your staff sign-in page, such as `signin.example.com`.
+- A GitHub or GitLab account for the Deploy button. Cloudflare copies the installer into it and deploys from that copy.
+
+### 1. Create a provisioning token
+
+The running dashboard creates each app's Workers, databases, gateway and DNS records in your account, so it needs its own Cloudflare API token. In Cloudflare, open **My Profile → API Tokens → Create Token**, then **Create Custom Token → Get started**.
+
+![Create API Token page with the custom token option](https://docs.truly.you/assets/guides/cloudflare/01-create-token.jpg)
+
+Name the token, for example `TrulyYou dashboard provisioning`, and add these permissions:
+
+| Scope | Permission | Access |
+|---|---|---|
+| Account | Containers | Edit |
+| Account | D1 | Edit |
+| Account | Workers Scripts | Edit |
+| Account | Account Settings | Read |
+| Zone | Zone | Read |
+| Zone | Workers Routes | Edit |
+| Zone | DNS | Edit |
+
+![Token permissions](https://docs.truly.you/assets/guides/cloudflare/02-token-permissions.jpg)
+
+Under **Account Resources**, include only your account. Under **Zone Resources**, choose **Specific zone** and your dashboard's zone.
+
+![Token account and zone resources](https://docs.truly.you/assets/guides/cloudflare/03-token-resources.jpg)
+
+Choose **Continue to summary**, check that it matches, then **Create Token**. Copy the token; Cloudflare shows it only once.
+
+![Token summary](https://docs.truly.you/assets/guides/cloudflare/04-token-summary.jpg)
+
+### 2. Open the deployment form
+
+Choose **Deploy to Cloudflare** on this page and sign in to Cloudflare. It opens **Set up your application** in your account.
+
+![Cloudflare Set up your application form](https://docs.truly.you/assets/guides/cloudflare/05-deploy-form.jpg)
+
+### 3. Connect a Git account
+
+Cloudflare copies the installer into a repository in your GitHub or GitLab account and deploys from it. Choose **New GitHub connection** (or GitLab) and the account for the copy.
+
+GitHub asks you to grant the Cloudflare Workers and Pages app access to **all repositories** in that account, with write access to code. Use a GitHub account or organization that holds none of your source code, such as one created for deployments. If that is not possible, [install from a terminal](#install-from-a-terminal) instead.
+
+![GitHub Install and Authorize Cloudflare Workers and Pages](https://docs.truly.you/assets/guides/cloudflare/06-github-authorize.jpg)
+
+After you authorize the connection for the first time, Cloudflare opens a general repository list instead of the form. Choose **Deploy to Cloudflare** on this page again; the form now offers your connected account.
+
+![Git account selection](https://docs.truly.you/assets/guides/cloudflare/07-git-account.jpg)
+
+Select the account and tick **Create private Git repository**. The repository holds only the installer; your token is stored as an encrypted Cloudflare secret.
+
+### 4. Fill in the form
+
+![Git account, private repository and project name](https://docs.truly.you/assets/guides/cloudflare/08-form-top.jpg)
 
 | Field | Value |
 |---|---|
+| Project name | The dashboard Worker's name, such as `trulyyou-dashboard`. |
+| `PROVISIONING_TOKEN` | The token from step 1. |
+| `OWNER_EMAIL` | The designated owner's email. They verify it at first sign-in. |
+| `DASHBOARD_HOSTNAME` | The dashboard hostname from **Before you start**. Leave empty to use a `workers.dev` address. |
+| `SIGNIN_HOSTNAME` | Optional. The sign-in hostname, in the same zone. Leave empty to use `signin.<your zone>`. |
+| `CLOUDFLARE_ACCOUNT_ID` | Your account ID, shown on your Cloudflare account home and in the dashboard address. |
+| `CLOUDFLARE_ZONE_ID` | The zone's ID, from the zone's **Overview** page. |
 | `COMPANY_NAME` | Your company name, shown in dashboard emails. |
-| `OWNER_EMAIL` | The designated owner's email. |
-| `CLOUDFLARE_ACCOUNT_ID` | The 32-character account ID from your Cloudflare dashboard's account home. |
-| `CLOUDFLARE_ZONE_ID` | The zone ID of the active DNS zone for the secure gateway, from the zone's Overview page. |
-| `DASHBOARD_HOSTNAME` | Optional hostname in that account, such as `auth-dashboard.example.com`. The installer creates a custom-domain route for it. Leave empty to use `workers.dev`. |
-| `PROVISIONING_TOKEN` | Enter in the **secret** field. Cloudflare stores it as a Worker secret. |
 
-Keep `npm run deploy` as the deploy command. The installer copies the images, deploys the dashboard Worker and prints its URL.
+![Owner, hostname and sign-in fields](https://docs.truly.you/assets/guides/cloudflare/09-form-fields.jpg)
 
-For a terminal installation on Apple Silicon or Linux x64, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, and fill in the same fields under `vars` in `wrangler.jsonc`. Then pass the token in the environment, for example `PROVISIONING_TOKEN=<token> npm run deploy`. The installer does not read `.dev.vars` or `.env` files. Keep the generated `.generated/` directory: rerunning from it resumes the same installation.
+Leave the build settings as they are. If your browser offers to fill a saved password or email into these fields, dismiss it.
+
+### 5. Deploy
+
+Choose **Deploy**. Cloudflare creates your repository and starts a build that copies the dashboard images into your account and deploys the dashboard Worker. The build takes about two minutes.
+
+![Build log](https://docs.truly.you/assets/guides/cloudflare/10-build-log.jpg)
+
+### 6. Wait for setup
+
+Open your dashboard hostname. It shows **Setting up your dashboard** while it creates its sign-in app, databases and secure gateway in your account, and shows sign-in when that is done, usually within five minutes. The page refreshes itself.
+
+If it shows **Setup needs attention**, read the dashboard's log: open **Compute → Containers**, choose the container named after your project with `-dashboard` at the end, then **Logs**, and select only the **Containers** dataset. The most recent lines explain what stopped setup. After correcting the cause, [redeploy](#upgrade-a-cloudflare-installation); setup resumes where it stopped.
+
+![Container logs](https://docs.truly.you/assets/guides/cloudflare/12-container-logs.jpg)
+
+A new public hostname is found by automated scanners within minutes, so the request logs also show probes for files such as `.env`. They receive the setup page and can be ignored.
+
+### 7. Sign in
+
+Choose **Sign in with TrulyYou**, scan the code with your phone, enter the owner email and the code sent to it, and approve on your phone. The owner receives the Owner role.
+
+![Dashboard sign-in](https://docs.truly.you/assets/guides/cloudflare/11-sign-in.jpg)
+
+### Upgrade a Cloudflare installation
+
+To move to a new release, copy `release.json` from the [installer repository](https://github.com/Truly-You/trulyyou-installer) into your installer repository, commit it and push. Cloudflare Builds redeploys automatically; your form values in `wrangler.jsonc` and the token secret stay as they are. To redeploy without changes, push an empty commit.
+
+A redeploy restarts the dashboard. If the page still shows the previous state a few minutes later, push an empty commit once more.
+
+### Install from a terminal
+
+On Apple Silicon or Linux x64, download the [installation bundle](/assets/self-host.zip), extract it, run `npm install`, and fill in the same fields under `vars` in `wrangler.jsonc`. Then pass the token in the environment, for example `PROVISIONING_TOKEN=<token> npm run deploy`. The installer does not read `.dev.vars` or `.env` files. Keep the generated `.generated/` directory: rerunning from it resumes the same installation.
 
 ### Remove a Cloudflare installation
 
 Delete the Workers and containers before the databases. Force-deleting a Worker also deletes its Durable Object data and its custom domains:
 
-1. **Workers & Pages:** delete the dashboard Worker (`trulyyou-dashboard` unless you renamed it) and, for every app the dashboard created, `trulyyou-<id>`, `trulyyou-<id>-preview`, `trulyyou-<id>-gateway` and, if present, `trulyyou-<id>-links`. That includes the dashboard's own sign-in app.
+1. **Workers & Pages:** delete the dashboard Worker (your project name) and, for every app the dashboard created, `trulyyou-<id>`, `trulyyou-<id>-preview`, `trulyyou-<id>-gateway` and, if present, `trulyyou-<id>-links`. That includes the dashboard's own sign-in app.
 2. **Containers:** delete the dashboard container and each `trulyyou-<id>-gateway-packetgateway` container if they remain.
 3. **D1:** delete each app's `trulyyou-<id>-production-data` and `trulyyou-<id>-preview-data` databases.
-4. **DNS:** in the gateway zone, delete the remaining `route-<id>`, `signin` and custom-domain records.
-5. Delete the installer repository the deploy button copied into your GitHub account, and its Cloudflare Builds connection, then revoke the `PROVISIONING_TOKEN`.
+4. **DNS:** in the zone, delete any remaining `route-<id>`, sign-in and custom-domain records.
+5. Delete the installer repository in your Git account and revoke the provisioning token.
 
 Container images copied into your Cloudflare registry remain until you delete them with `wrangler containers images delete`.
 
